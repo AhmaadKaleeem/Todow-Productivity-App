@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Color;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:path/path.dart' as p;
+import 'package:sqflite/sqflite.dart' as sqf;
 import 'package:todow/domain/models/task.dart';
 import 'package:todow/domain/services/notification_service.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -10,6 +12,197 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 
 typedef NotificationTapHandler = void Function(String? payload, String? action);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Background action handler — TOP-LEVEL required by flutter_local_notifications.
+// Runs in its own Dart isolate (no Riverpod / Flutter widgets available).
+// Opens sqflite directly to perform Complete / Snooze writes immediately,
+// so the DB is already updated before the user opens the app.
+// ─────────────────────────────────────────────────────────────────────────────
+@pragma('vm:entry-point')
+Future<void> notificationBackgroundHandler(NotificationResponse response) async {
+  final taskId = response.payload;
+  final action = response.actionId;
+  if (taskId == null || action == null) return;
+
+  debugPrint('[BG] Notification action "$action" for task $taskId');
+
+  try {
+    await _BgActionRunner.run(taskId: taskId, action: action);
+  } catch (e) {
+    // Never crash the background isolate — the foreground re-sync at next
+    // launch will reconcile any state that couldn't be written here.
+    debugPrint('[BG] Background action failed: $e');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Minimal DB helper for the background isolate.
+// Only the tables / columns needed for Complete and Snooze are touched.
+// ─────────────────────────────────────────────────────────────────────────────
+class _BgActionRunner {
+  static Future<void> run({
+    required String taskId,
+    required String action,
+  }) async {
+    // Open the same DB file the main isolate uses.
+    final dbsPath = await sqf.getDatabasesPath();
+    final dbPath = p.join(dbsPath, 'todow.db');
+    final db = await sqf.openDatabase(dbPath);
+
+    try {
+      switch (action) {
+        case 'complete':
+          await _completeTask(db, taskId);
+        case 'snooze':
+          await _snoozeTask(db, taskId);
+      }
+    } finally {
+      await db.close();
+    }
+  }
+
+  // Mark task completed and remove all its pending reminders.
+  static Future<void> _completeTask(sqf.Database db, String taskId) async {
+    final now = DateTime.now().toIso8601String();
+    await db.update(
+      'tasks',
+      {'status': 'completed', 'updated_at': now},
+      where: 'id = ?',
+      whereArgs: [taskId],
+    );
+    await db.delete(
+      'scheduled_reminders',
+      where: 'task_id = ? AND status IN (?, ?)',
+      whereArgs: [taskId, 'pending', 'snoozed'],
+    );
+    debugPrint('[BG] Task $taskId marked completed.');
+  }
+
+  // Snooze the active reminder by 15 minutes and post a replacement
+  // notification so the user sees confirmation without opening the app.
+  static Future<void> _snoozeTask(sqf.Database db, String taskId) async {
+    // Read the active reminder for this task.
+    final rows = await db.query(
+      'scheduled_reminders',
+      where: "task_id = ? AND status IN ('pending', 'snoozed')",
+      whereArgs: [taskId],
+      orderBy: 'scheduled_at ASC',
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      debugPrint('[BG] No active reminder found for task $taskId — skipping snooze.');
+      return;
+    }
+
+    final snoozedUntil = DateTime.now().add(const Duration(minutes: 15));
+    final reminderId = rows.first['id'] as String;
+    final notifId = (rows.first['notification_id'] as int?) ??
+        reminderId.hashCode.abs() % 2147483647;
+
+    await db.update(
+      'scheduled_reminders',
+      {
+        'status': 'snoozed',
+        'snoozed_until': snoozedUntil.toIso8601String(),
+        'scheduled_at': snoozedUntil.toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [reminderId],
+    );
+
+    // Read the task title for the replacement notification.
+    final taskRows = await db.query(
+      'tasks',
+      columns: ['title'],
+      where: 'id = ?',
+      whereArgs: [taskId],
+      limit: 1,
+    );
+    final title = taskRows.isNotEmpty
+        ? (taskRows.first['title'] as String? ?? 'Task')
+        : 'Task';
+
+    // Schedule the replacement notification directly from the background isolate.
+    await _scheduleSnoozeNotification(
+      taskId: taskId,
+      title: title,
+      notifId: notifId,
+      fireAt: snoozedUntil,
+    );
+    debugPrint('[BG] Task $taskId snoozed until $snoozedUntil.');
+  }
+
+  static Future<void> _scheduleSnoozeNotification({
+    required String taskId,
+    required String title,
+    required int notifId,
+    required DateTime fireAt,
+  }) async {
+    // Initialise timezone for the background isolate.
+    tz_data.initializeTimeZones();
+    try {
+      final tz.Location loc = tz.getLocation(await FlutterTimezone.getLocalTimezone());
+      tz.setLocalLocation(loc);
+    } catch (_) {
+      try {
+        tz.setLocalLocation(tz.getLocation('Asia/Karachi'));
+      } catch (_) {
+        tz.setLocalLocation(tz.UTC);
+      }
+    }
+
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    final plugin = FlutterLocalNotificationsPlugin();
+    await plugin.initialize(const InitializationSettings(android: androidInit));
+
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'reminders',
+        'Reminders',
+        channelDescription: 'Task reminder notifications',
+        importance: Importance.high,
+        priority: Priority.high,
+        color: Color(0xFFF97316),
+        subText: 'Snoozed',
+        actions: [
+          AndroidNotificationAction('complete', 'Complete',
+              showsUserInterface: true),
+          AndroidNotificationAction('snooze', 'Snooze 15m',
+              showsUserInterface: true),
+          AndroidNotificationAction('open', 'Open', showsUserInterface: true),
+        ],
+      ),
+    );
+
+    final tzScheduled = tz.TZDateTime.from(fireAt, tz.local);
+    try {
+      await plugin.zonedSchedule(
+        notifId,
+        title,
+        null,
+        tzScheduled,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: taskId,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (_) {
+      await plugin.zonedSchedule(
+        notifId,
+        title,
+        null,
+        tzScheduled,
+        details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: taskId,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    }
+  }
+}
 
 class NotificationServiceImpl implements NotificationService {
   NotificationServiceImpl({this.onAction});
@@ -20,6 +213,7 @@ class NotificationServiceImpl implements NotificationService {
 
   static const channelNormal = 'reminders';
   static const channelConstant = 'constant_reminders';
+  static const channelAlarm = 'alarms';
 
   @override
   Future<void> initialize() async {
@@ -30,35 +224,61 @@ class NotificationServiceImpl implements NotificationService {
       tz.setLocalLocation(tz.getLocation(timeZoneName));
       debugPrint('Timezone set to: ${tz.local.name}');
     } catch (e) {
-      debugPrint('Could not initialize timezone: $e — falling back to Asia/Karachi (+05:00)');
-      // Use Asia/Karachi as the hardcoded fallback for UTC+5 devices
-      // so scheduled alarms fire at the correct local time instead of 5h early.
+      debugPrint(
+          'Could not initialize timezone: $e — falling back to Asia/Karachi (+05:00)');
       try {
         tz.setLocalLocation(tz.getLocation('Asia/Karachi'));
       } catch (_) {
         tz.setLocalLocation(tz.UTC);
       }
     }
+
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const ios = DarwinInitializationSettings();
+
     await _plugin.initialize(
       const InitializationSettings(android: android, iOS: ios),
+      // Foreground / app-open tap/action handler.
       onDidReceiveNotificationResponse: (response) {
         onAction?.call(response.payload, response.actionId);
       },
+      // Background / terminated action handler — must be a top-level function.
+      onDidReceiveBackgroundNotificationResponse: notificationBackgroundHandler,
     );
+
     if (Platform.isAndroid) {
       final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
+
       await androidPlugin?.createNotificationChannel(
-        const AndroidNotificationChannel(channelNormal, 'Reminders',
-            description: 'Task reminder notifications',
-            importance: Importance.high),
+        const AndroidNotificationChannel(
+          channelNormal,
+          'Reminders',
+          description: 'Task reminder notifications',
+          importance: Importance.high,
+        ),
       );
+
       await androidPlugin?.createNotificationChannel(
-        const AndroidNotificationChannel(channelConstant, 'Constant Reminders',
-            description: 'Persistent reminders until task is completed',
-            importance: Importance.max),
+        const AndroidNotificationChannel(
+          channelConstant,
+          'Constant Reminders',
+          description: 'Persistent reminders until task is completed',
+          importance: Importance.max,
+        ),
+      );
+
+      // Alarm channel: max importance, full vibration pattern.
+      await androidPlugin?.createNotificationChannel(
+        AndroidNotificationChannel(
+          channelAlarm,
+          'Alarms',
+          description: 'Full-screen task alarms',
+          importance: Importance.max,
+          playSound: true,
+          enableVibration: true,
+          vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
+        ),
       );
     }
   }
@@ -105,40 +325,58 @@ class NotificationServiceImpl implements NotificationService {
     String? label,
     bool ringAsAlarm = false,
   }) async {
-    final channel = isConstant ? channelConstant : channelNormal;
+    final channel =
+        ringAsAlarm ? channelAlarm : (isConstant ? channelConstant : channelNormal);
 
-    // Single source of truth for what the notification says.
-    // Collapsed (ticker) and expanded views both use title + body.
-    final title = isConstant ? 'Constant Reminder' : 'Reminder';
-    final body  = label == null ? task.title : '${task.title} — $label';
+    final title = task.title;
+    final timeContext = label ?? (isConstant ? 'Still pending' : 'Due now');
+    final hasDescription = task.description.isNotEmpty;
 
-    // BigText expansion: show the task description when available,
-    // otherwise fall back to body so it is always informative.
-    final expandedText = task.description.isNotEmpty
-        ? '${task.title}\n\n${task.description}'
-        : body;
+    // Body: description when present, otherwise null (clean single-line look).
+    final body = hasDescription ? task.description : null;
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
         channel,
         isConstant ? 'Constant Reminders' : 'Reminders',
         channelDescription: 'Task reminder notifications',
-        importance: isConstant ? Importance.max : Importance.high,
-        priority: isConstant ? Priority.max : Priority.high,
-        ongoing: isConstant,
-        autoCancel: !isConstant,
+        importance: ringAsAlarm || isConstant ? Importance.max : Importance.high,
+        priority: ringAsAlarm || isConstant ? Priority.max : Priority.high,
+        ongoing: isConstant || ringAsAlarm,
+        autoCancel: !isConstant && !ringAsAlarm,
+
+        // Full-screen intent (alarm-style UI overlay) — only for alarm mode.
         fullScreenIntent: ringAsAlarm,
+
+        // FLAG_INSISTENT (bit 4 = decimal 4) makes the alarm ring continuously.
         additionalFlags: ringAsAlarm ? Int32List.fromList(<int>[4]) : null,
-        // Brand accent colour (orange) applied to the notification icon
+
+        category: ringAsAlarm
+            ? AndroidNotificationCategory.alarm
+            : AndroidNotificationCategory.reminder,
+        audioAttributesUsage: ringAsAlarm
+            ? AudioAttributesUsage.alarm
+            : AudioAttributesUsage.notification,
+        visibility: NotificationVisibility.public,
+
+        // Brand accent colour on the notification icon badge.
         color: const Color(0xFFF97316),
-        styleInformation: BigTextStyleInformation(
-          expandedText,
-          contentTitle: body,
-          summaryText: label,
-          htmlFormatContent: false,
-          htmlFormatContentTitle: false,
-        ),
-        subText: isConstant ? 'Constant reminder' : 'Reminder',
+
+        // subText shows the context label (e.g. "1 day before") next to the
+        // app name — no need to repeat it in the body or summary.
+        subText: timeContext,
+
+        // Only expand when there is actual content to show.
+        // Remove summaryText repetition — subText already carries the context.
+        styleInformation: hasDescription
+            ? BigTextStyleInformation(
+                task.description,
+                contentTitle: title,
+                htmlFormatContent: false,
+                htmlFormatContentTitle: false,
+              )
+            : null,
+
         actions: const [
           AndroidNotificationAction('complete', 'Complete',
               showsUserInterface: true),
@@ -159,7 +397,7 @@ class NotificationServiceImpl implements NotificationService {
     );
 
     if (scheduledAt.isBefore(DateTime.now())) {
-      // Past/overdue — fire immediately
+      // Past / overdue — fire immediately.
       await _plugin.show(notificationId, title, body, details,
           payload: task.id);
     } else {
