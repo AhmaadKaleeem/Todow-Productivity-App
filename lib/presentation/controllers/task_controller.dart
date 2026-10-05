@@ -79,18 +79,29 @@ class TaskController extends ChangeNotifier {
       ..sort((a, b) => a.dueAt!.compareTo(b.dueAt!));
   }
 
-  Future<void> loadTasks() async {
-    _loading = true;
-    _error = null;
-    notifyListeners();
+  Future<void> loadTasks({bool silent = false}) async {
+    if (!silent) {
+      _loading = true;
+      _error = null;
+      notifyListeners();
+    }
     try {
       _allTasks = await _repo.getAll();
     } catch (e) {
-      _error = 'Could not load tasks. Please try again.';
+      if (!silent) _error = 'Could not load tasks. Please try again.';
     } finally {
-      _loading = false;
-      notifyListeners();
+      if (!silent) {
+        _loading = false;
+        notifyListeners();
+      } else {
+        notifyListeners();
+      }
     }
+  }
+
+  void syncTasks(List<Task> newTasks) {
+    _allTasks = newTasks;
+    notifyListeners();
   }
 
   Timer? _queryDebounce;
@@ -175,7 +186,11 @@ class TaskController extends ChangeNotifier {
     );
     final saved = await _repo.create(task);
     await _scheduler.syncTaskReminders(saved);
-    if (!skipReload) await loadTasks();
+    
+    _allTasks = [..._allTasks, saved];
+    notifyListeners();
+    
+    if (!skipReload) await loadTasks(silent: true);
     return saved;
   }
 
@@ -186,7 +201,16 @@ class TaskController extends ChangeNotifier {
     final updated = task.copyWith(updatedAt: DateTime.now());
     await _repo.update(updated);
     await _scheduler.syncTaskReminders(updated);
-    if (!skipReload) await loadTasks();
+    
+    final idx = _allTasks.indexWhere((t) => t.id == task.id);
+    if (idx != -1) {
+      _allTasks[idx] = updated;
+    } else {
+      _allTasks = [..._allTasks, updated];
+    }
+    notifyListeners();
+    
+    if (!skipReload) await loadTasks(silent: true);
     return updated;
   }
 
@@ -243,7 +267,7 @@ class TaskController extends ChangeNotifier {
     } catch (error) {
       debugPrint('Could not remove attachments for task $id: $error');
     }
-    await loadTasks();
+    await loadTasks(silent: true);
   }
 
   Future<void> togglePinTask(String id) async {

@@ -9,6 +9,8 @@ import 'package:todow/domain/models/subtask.dart';
 import 'package:todow/domain/models/task.dart';
 import 'package:todow/domain/reminders/reminder_presets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart' as p;
+import 'package:todow/presentation/controllers/task_controller.dart';
 import 'package:todow/presentation/providers/timetable_providers.dart';
 import 'package:todow/presentation/providers/task_providers.dart';
 import 'package:todow/presentation/providers/roadmap_providers.dart';
@@ -247,6 +249,7 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
       subtasks: _subtasks,
       reminderPlan: _reminderPlan,
     );
+    // Sync the legacy TaskController used by HomeScreen (now handled automatically by home_screen listening to tasksProvider)
     setState(() {
       _workingTask = task;
       if (_title.text.trim().isEmpty) _title.text = 'Untitled';
@@ -325,13 +328,14 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
         );
       }
       if (mounted) setState(() => _isOnPersonalTimetable = true);
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[ERR-TSK-01] Failed to add task to timetable: $e\n$st');
       if (!mounted) return;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(const SnackBar(
           content:
-              Text('Could not add this task to your timetable. Try again.'),
+              Text("We couldn't add this task to your timetable. Please check your schedule and try again."),
         ));
     } finally {
       if (mounted) setState(() => _isAddingToPersonalTimetable = false);

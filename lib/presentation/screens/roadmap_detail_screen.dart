@@ -204,10 +204,11 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Roadmap exported as $extension')),
       );
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[ERR-RDM-01] Failed to export roadmap: $e\n$st');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not export this roadmap.')),
+        const SnackBar(content: Text("We couldn't export this roadmap. Please check your storage permissions and try again.")),
       );
     }
   }

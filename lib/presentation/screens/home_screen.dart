@@ -15,6 +15,7 @@ import 'package:todow/presentation/screens/task_editor_screen.dart';
 import 'package:todow/presentation/screens/timetable_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/presentation/providers/app_providers.dart';
+import 'package:todow/presentation/providers/task_providers.dart';
 import 'package:todow/presentation/providers/timetable_providers.dart';
 import 'package:todow/presentation/widgets/corner_arc_decor.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -355,6 +356,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(tasksProvider, (prev, next) {
+      if (next.hasValue) {
+        context.read<TaskController>().syncTasks(next.value!);
+      }
+    });
     final tc = context.watch<TaskController>();
     final allActive =
         tc.visibleTasks.where((t) => t.status == TaskStatus.active).toList();
@@ -1297,10 +1303,11 @@ class _TaskRowState extends State<_TaskRow>
                 onPressed: (_) async {
                   try {
                     await widget.controller.togglePinTask(widget.task.id);
-                  } catch (e) {
+                  } catch (e, st) {
                     if (!context.mounted) return;
+                    debugPrint('[ERR-HOM-01] Failed to perform task action: $e\n$st');
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(e.toString())),
+                      const SnackBar(content: Text("We couldn't perform this action. Please check your connection and try again.")),
                     );
                   }
                 },
@@ -1321,12 +1328,13 @@ class _TaskRowState extends State<_TaskRow>
                 onPressed: (_) async {
                   try {
                     await widget.controller.deleteTask(widget.task.id);
-                  } catch (_) {
+                  } catch (e, st) {
                     if (!context.mounted) return;
+                    debugPrint('[ERR-HOM-02] Failed to delete task: $e\n$st');
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                           content:
-                              Text('Task could not be deleted. Try again.')),
+                              Text("We couldn't delete this task. Please try again.")),
                     );
                   }
                 },

@@ -50,10 +50,11 @@ class _AttachmentListWidgetState extends ConsumerState<AttachmentListWidget> {
         _guessMime(file.extension),
       );
       await _load();
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ERR-ATT-01] Failed to open attachment: $e\n$st');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+          const SnackBar(content: Text("We couldn't open this attachment. The file may have been moved or deleted.")),
         );
       }
     }

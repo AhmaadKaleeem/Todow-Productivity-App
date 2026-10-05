@@ -66,9 +66,10 @@ class Task {
   bool get isDueToday {
     if (dueAt == null) return false;
     final now = DateTime.now();
-    return dueAt!.year == now.year &&
-        dueAt!.month == now.month &&
-        dueAt!.day == now.day;
+    final localDue = dueAt!.toLocal();
+    return localDue.year == now.year &&
+        localDue.month == now.month &&
+        localDue.day == now.day;
   }
 
   Task copyWith({

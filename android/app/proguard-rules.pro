@@ -14,3 +14,12 @@
 
 # Ignore missing Play Core classes referenced by Flutter engine
 -dontwarn com.google.android.play.core.**
+
+# Gson rules for flutter_local_notifications
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class com.google.gson.** { *; }
+-keep class com.dexterous.flutterlocalnotifications.** { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
+-keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
+-keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken

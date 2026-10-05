@@ -237,7 +237,7 @@ class RemindersSection extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
-                          'No reminders set — add some below',
+                          'No reminders set. Add some below.',
                           style: TextStyle(fontSize: 13, color: AppColors.textSecondary.withValues(alpha: 0.6)),
                         ),
                       )

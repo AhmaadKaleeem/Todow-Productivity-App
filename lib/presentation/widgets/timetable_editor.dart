@@ -158,12 +158,13 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
         ));
       }
       if (mounted) Navigator.pop(context);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ERR-TT-01] Failed to save class: $e\n$st');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-            e.toString(),
-            style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+          content: const Text(
+            "We couldn't save this class. Please check your inputs and try again.",
+            style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
           ),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

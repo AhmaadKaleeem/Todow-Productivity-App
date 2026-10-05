@@ -5,11 +5,8 @@ import 'package:todow/core/theme/app_colors.dart';
 import 'package:todow/domain/models/attachment.dart';
 import 'package:todow/presentation/widgets/attachment_row.dart';
 
-import 'package:provider/provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/core/providers/service_providers.dart';
-import 'package:todow/presentation/providers/task_providers.dart';
-import 'package:todow/presentation/controllers/task_controller.dart';
 import 'task_controller_test.dart' show MockTaskRepository, MockReminderScheduler, MockAttachmentRepository, MockFileStorage;
 
 class _ThumbFileStorage extends MockFileStorage {
@@ -52,8 +49,6 @@ void main() {
     // Let's create a custom controller class or just override MockFileStorage.
     // Wait, let's just make an inline class here.
     final mockFs = _ThumbFileStorage(mockedThumbPath ?? 'dummy.jpg');
-    
-    final controller = TaskController(mockRepo, MockReminderScheduler(), mockAttachmentRepo, mockFs);
 
     return ProviderScope(
       overrides: [

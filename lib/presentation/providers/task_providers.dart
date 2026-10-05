@@ -32,8 +32,8 @@ class TaskNotifier extends AsyncNotifier<List<Task>> {
   }
 
   Future<void> reload() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => ref.read(taskRepositoryProvider).getAll());
+    final result = await AsyncValue.guard(() => ref.read(taskRepositoryProvider).getAll());
+    state = result;
   }
 
   Future<Task?> getTask(String id) => ref.read(taskRepositoryProvider).getById(id);
@@ -85,7 +85,12 @@ class TaskNotifier extends AsyncNotifier<List<Task>> {
     );
     final saved = await ref.read(taskRepositoryProvider).create(task);
     await ref.read(reminderSchedulerProvider).syncTaskReminders(saved);
-    await reload();
+    
+    // Optimistic update
+    state = AsyncValue.data([...(state.valueOrNull ?? []), saved]);
+    
+    // Background reload
+    reload();
     return saved;
   }
 
@@ -96,7 +101,20 @@ class TaskNotifier extends AsyncNotifier<List<Task>> {
     final updated = task.copyWith(updatedAt: DateTime.now());
     await ref.read(taskRepositoryProvider).update(updated);
     await ref.read(reminderSchedulerProvider).syncTaskReminders(updated);
-    await reload();
+    
+    // Optimistic update
+    final currentTasks = state.valueOrNull ?? [];
+    final idx = currentTasks.indexWhere((t) => t.id == task.id);
+    if (idx != -1) {
+      final newTasks = List<Task>.from(currentTasks);
+      newTasks[idx] = updated;
+      state = AsyncValue.data(newTasks);
+    } else {
+      state = AsyncValue.data([...currentTasks, updated]);
+    }
+    
+    // Background reload
+    reload();
     return updated;
   }
 

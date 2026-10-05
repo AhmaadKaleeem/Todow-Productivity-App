@@ -88,17 +88,20 @@ class _AttachmentsSectionState extends ConsumerState<AttachmentsSection> {
 
       await controller.attachFile(taskToAttach.id, file.path!, file.name, mimeType);
       _loadAttachments(taskToAttach.id);
-    } on FileTooLargeException catch (e) {
+    } on FileTooLargeException catch (e, st) {
+      debugPrint('[ERR-ATT-02] File too large: $e\n$st');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("This file is too large. Please select a file smaller than the limit.")));
       }
-    } on UnsupportedFileTypeException catch (e) {
+    } on UnsupportedFileTypeException catch (e, st) {
+      debugPrint('[ERR-ATT-03] Unsupported file type: $e\n$st');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("This file type isn't supported. Please use a supported format like PDF, PNG, or JPG.")));
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[ERR-ATT-04] Failed to attach file: $e\n$st');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to attach file: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("We couldn't attach this file. Please ensure it isn't corrupted and try again.")));
       }
     }
   }

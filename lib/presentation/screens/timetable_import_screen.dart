@@ -112,9 +112,9 @@ class _TimetableImportScreenState extends ConsumerState<TimetableImportScreen> {
   }
 
   String get _failureMessage => switch (_ocrAttempts) {
-        0 || 1 => "Couldn't read this image.",
-        2 => 'Still having trouble reading this timetable.',
-        _ => "Couldn't extract the timetable clearly.",
+        0 || 1 => "We couldn't extract the timetable clearly. Please ensure the photo is well-lit and in focus.",
+        2 => "Still having trouble. Please check the image quality or try a different photo.",
+        _ => "We couldn't read the text. You may need to crop the image or type the details manually.",
       };
 
   void _showMessage(String message) {
@@ -209,10 +209,11 @@ class _TimetableImportScreenState extends ConsumerState<TimetableImportScreen> {
                           rows, widget.scheduleKind);
                       if (!context.mounted) return;
                       Navigator.pop(context);
-                    } catch (error) {
+                    } catch (error, st) {
                       if (!mounted) return;
                       setState(() => _loading = false);
-                      _showMessage(error.toString());
+                      debugPrint('[ERR-IMP-01] Timetable import failed: $error\n$st');
+                      _showMessage("We encountered an issue importing your timetable. Please review the CSV format and try again.");
                     }
                   },
                 ),
