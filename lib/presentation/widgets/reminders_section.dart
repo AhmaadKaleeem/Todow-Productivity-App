@@ -436,6 +436,23 @@ class RemindersSection extends StatelessWidget {
                             'Reminders will ring continuously at full volume until you dismiss them',
                             style: TextStyle(fontSize: 12, color: AppColors.textSecondary.withValues(alpha: 0.8)),
                           ),
+                          if (plan.ringAsAlarm)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.info_outline, size: 14, color: AppColors.attention.withValues(alpha: 0.9)),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'If it doesn\'t ring, check Settings → Apps → Todow → Alarms & Reminders (requires explicit permission on Android 12+).',
+                                      style: TextStyle(fontSize: 11.5, color: AppColors.attention.withValues(alpha: 0.9), height: 1.3),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),

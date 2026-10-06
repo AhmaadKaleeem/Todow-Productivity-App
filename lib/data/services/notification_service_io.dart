@@ -163,12 +163,13 @@ class _BgActionRunner {
         channelDescription: 'Task reminder notifications',
         importance: Importance.high,
         priority: Priority.high,
-        color: Color(0xFFF97316),
+        // Brand color: Todow action blue
+        color: Color(0xFF0EA5E9),
         subText: 'Snoozed',
         actions: [
-          AndroidNotificationAction('complete', 'Complete',
+          AndroidNotificationAction('complete', 'Done',
               showsUserInterface: true),
-          AndroidNotificationAction('snooze', 'Snooze 15m',
+          AndroidNotificationAction('snooze', 'Snooze',
               showsUserInterface: true),
           AndroidNotificationAction('open', 'Open', showsUserInterface: true),
         ],
@@ -360,7 +361,7 @@ class NotificationServiceImpl implements NotificationService {
         visibility: NotificationVisibility.public,
 
         // Brand accent colour on the notification icon badge.
-        color: const Color(0xFFF97316),
+        color: const Color(0xFF0EA5E9),
 
         // subText shows the context label (e.g. "1 day before") next to the
         // app name — no need to repeat it in the body or summary.
@@ -378,9 +379,9 @@ class NotificationServiceImpl implements NotificationService {
             : null,
 
         actions: const [
-          AndroidNotificationAction('complete', 'Complete',
+          AndroidNotificationAction('complete', 'Done',
               showsUserInterface: true),
-          AndroidNotificationAction('snooze', 'Snooze 15m',
+          AndroidNotificationAction('snooze', 'Snooze',
               showsUserInterface: true),
           AndroidNotificationAction('open', 'Open',
               showsUserInterface: true),

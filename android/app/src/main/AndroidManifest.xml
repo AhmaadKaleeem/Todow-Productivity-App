@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <application
         android:label="Todow"
         android:name="${applicationName}"
@@ -39,11 +41,14 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- exported=true is required: AlarmManager fires this receiver cross-process
+             when the app is backgrounded or killed. Without it, alarms are silently
+             dropped on Android 8+ when the app is not in the foreground. -->
         <receiver
-            android:exported="false"
+            android:exported="true"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
         <receiver
-            android:exported="false"
+            android:exported="true"
             android:directBootAware="true"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
             <intent-filter>
