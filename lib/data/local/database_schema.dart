@@ -4,7 +4,7 @@ Future<void> createDatabaseSchema(Database db, int version) async {
   await db.execute('''CREATE TABLE tasks (
     id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL,
     status TEXT NOT NULL, priority TEXT NOT NULL, created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL, start_at TEXT, due_at TEXT, category TEXT,
+    updated_at TEXT NOT NULL, start_at TEXT, due_at TEXT, category TEXT, subject TEXT,
     tags TEXT NOT NULL, reminder_plan TEXT NOT NULL, source_type TEXT NOT NULL,
     source_id TEXT, sort_order INTEGER NOT NULL DEFAULT 0, topic_id TEXT,
     is_pinned INTEGER NOT NULL DEFAULT 0)''');
@@ -148,5 +148,8 @@ Future<void> upgradeDatabaseSchema(
   if (oldVersion < 9) {
     await db.execute(
         'ALTER TABLE tasks ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0');
+  }
+  if (oldVersion < 10) {
+    await db.execute('ALTER TABLE tasks ADD COLUMN subject TEXT');
   }
 }

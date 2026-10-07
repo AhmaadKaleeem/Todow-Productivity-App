@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/presentation/providers/roadmap_providers.dart';
 import 'package:todow/presentation/screens/roadmap_detail_screen.dart';
 import 'package:todow/presentation/screens/roadmap_import_screen.dart';
+import 'package:todow/presentation/widgets/beautiful_back_button.dart';
 
 // 12 curated key-pairs — solid accent + gradient skin, aligned to design spec.
 // Index -1 = no explicit choice; colour is derived from roadmap.id hash.
@@ -157,7 +158,6 @@ class RoadmapListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final canGoBack = Navigator.of(context).canPop();
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -172,43 +172,8 @@ class RoadmapListScreen extends ConsumerWidget {
                   // Top bar — back + actions
                   Row(
                     children: [
-                      if (canGoBack) ...[
-                        GestureDetector(
-                          onTap: () => Navigator.maybePop(context),
-                          child: Container(
-                            height: 34,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x0F000000),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(Icons.arrow_back_rounded,
-                                    size: 16, color: AppColors.textSecondary),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Back',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
+                      const BeautifulBackButton(),
+                      const SizedBox(width: 8),
                       const Spacer(),
                       _ImportButton(),
                       const SizedBox(width: 8),

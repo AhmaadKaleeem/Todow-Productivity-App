@@ -5,7 +5,6 @@ import 'package:todow/domain/models/task.dart';
 import 'package:todow/domain/models/enums.dart';
 import 'package:todow/domain/models/reminder.dart';
 import 'package:todow/domain/models/attachment.dart';
-import 'package:todow/presentation/controllers/task_controller.dart';
 import 'package:todow/presentation/widgets/attachments_section.dart';
 
 import 'package:todow/core/providers/service_providers.dart';
@@ -43,7 +42,6 @@ class TestAttachmentsSection extends StatelessWidget {
 
 void main() {
   testWidgets('renders "No attachments" when the list is empty', (tester) async {
-    final mockRepo = MockTaskRepository();
     final mockAttachmentRepo = MockAttachmentRepository();
     final task = Task(id: '1', title: 'Task', description: '', status: TaskStatus.active, priority: TaskPriority.low, createdAt: DateTime.now(), updatedAt: DateTime.now(), tags: [], reminderPlan: const ReminderPlan(preset: ReminderPreset.custom, offsets: [], constantReminder: false), sourceType: TaskSourceType.local, sortOrder: 0);
     
@@ -54,7 +52,6 @@ void main() {
   });
 
   testWidgets('section is not built when widget.task == null', (tester) async {
-    final mockRepo = MockTaskRepository();
     final mockAttachmentRepo = MockAttachmentRepository();
     
     await tester.pumpWidget(TestAttachmentsSection(task: null, attachmentRepo: mockAttachmentRepo, fileStorage: MockFileStorage()));
@@ -65,7 +62,6 @@ void main() {
   });
 
   testWidgets('renders N rows for N attachments (N=2)', (tester) async {
-    final mockRepo = MockTaskRepository();
     final mockAttachmentRepo = MockAttachmentRepository();
     final task = Task(id: '1', title: 'Task', description: '', status: TaskStatus.active, priority: TaskPriority.low, createdAt: DateTime.now(), updatedAt: DateTime.now(), tags: [], reminderPlan: const ReminderPlan(preset: ReminderPreset.custom, offsets: [], constantReminder: false), sourceType: TaskSourceType.local, sortOrder: 0);
     
@@ -84,7 +80,6 @@ void main() {
   });
 
   testWidgets('[+ Add] button is present when editing', (tester) async {
-    final mockRepo = MockTaskRepository();
     final mockAttachmentRepo = MockAttachmentRepository();
     final task = Task(id: '1', title: 'Task', description: '', status: TaskStatus.active, priority: TaskPriority.low, createdAt: DateTime.now(), updatedAt: DateTime.now(), tags: [], reminderPlan: const ReminderPlan(preset: ReminderPreset.custom, offsets: [], constantReminder: false), sourceType: TaskSourceType.local, sortOrder: 0);
     
@@ -95,7 +90,6 @@ void main() {
   });
 
   testWidgets('section label reads "ATTACHMENTS"', (tester) async {
-    final mockRepo = MockTaskRepository();
     final mockAttachmentRepo = MockAttachmentRepository();
     final task = Task(id: '1', title: 'Task', description: '', status: TaskStatus.active, priority: TaskPriority.low, createdAt: DateTime.now(), updatedAt: DateTime.now(), tags: [], reminderPlan: const ReminderPlan(preset: ReminderPreset.custom, offsets: [], constantReminder: false), sourceType: TaskSourceType.local, sortOrder: 0);
     

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/presentation/providers/task_providers.dart';
 
 import 'package:todow/presentation/app.dart';
+import 'package:todow/presentation/widgets/beautiful_back_button.dart';
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -30,6 +31,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     
     return Scaffold(
       appBar: AppBar(
+        leadingWidth: 86,
+        leading: const Center(child: Padding(padding: EdgeInsets.only(left: 16), child: BeautifulBackButton())),
         title: const Text('Tasks'),
         actions: [
           PopupMenuButton<TaskSort>(

@@ -9,8 +9,6 @@ import 'package:todow/domain/models/subtask.dart';
 import 'package:todow/domain/models/task.dart';
 import 'package:todow/domain/reminders/reminder_presets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:provider/provider.dart' as p;
-import 'package:todow/presentation/controllers/task_controller.dart';
 import 'package:todow/presentation/providers/timetable_providers.dart';
 import 'package:todow/presentation/providers/task_providers.dart';
 import 'package:todow/presentation/providers/roadmap_providers.dart';
@@ -21,8 +19,10 @@ import 'package:todow/presentation/widgets/subtasks_section.dart';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const _kRoadmaps = [
+  'Assignment',
+  'Quiz',
+  'Paper',
   'Daily Tasks',
-  'Master Roadmap',
   'Personal Notes',
   'Study',
 ];
@@ -65,6 +65,8 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
   DateTime? _dueAt;
   late final List<String> _roadmaps;
   late String _selectedRoadmap;
+  late final List<String> _subjects;
+  String? _selectedSubject;
   Task? _workingTask;
   Topic? _roadmapTopic;
   Roadmap? _roadmap;
@@ -101,9 +103,27 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
     _priority = _workingTask?.priority ?? TaskPriority.none;
     _dueAt = _workingTask?.dueAt;
     _roadmaps = List.of(_kRoadmaps);
+    final allTasks = ref.read(tasksProvider).valueOrNull ?? [];
+    for (final t in allTasks) {
+      if (t.category != null && !_roadmaps.contains(t.category!)) {
+        _roadmaps.add(t.category!);
+      }
+    }
     final cat = _workingTask?.category ?? _kRoadmaps.first;
     if (!_roadmaps.contains(cat)) _roadmaps.add(cat);
     _selectedRoadmap = cat;
+    
+    _subjects = ['None'];
+    for (final t in allTasks) {
+      if (t.subject != null && !_subjects.contains(t.subject!)) {
+        _subjects.add(t.subject!);
+      }
+    }
+    _selectedSubject = _workingTask?.subject;
+    if (_selectedSubject != null && !_subjects.contains(_selectedSubject)) {
+      _subjects.add(_selectedSubject!);
+    }
+
     _subtasks = List.of(_workingTask?.subtasks ?? []);
     _reminderPlan = _workingTask?.reminderPlan ??
         ReminderPlan(
@@ -352,6 +372,7 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
           priority: _priority,
           dueAt: _dueAt,
           category: _isRoadmapTask ? null : _selectedRoadmap,
+          subject: _selectedSubject,
           topicId: widget.topicId,
           subtasks: _subtasks,
           reminderPlan: _reminderPlan,
@@ -364,6 +385,8 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
           dueAt: _dueAt,
           clearDueAt: _dueAt == null,
           category: _isRoadmapTask ? null : _selectedRoadmap,
+          subject: _selectedSubject,
+          clearSubject: _selectedSubject == null,
           topicId: widget.topicId,
           subtasks: _subtasks,
           reminderPlan: _reminderPlan,
@@ -431,6 +454,58 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
       setState(() {
         if (!_roadmaps.contains(name)) _roadmaps.add(name);
         _selectedRoadmap = name;
+      });
+    }
+  }
+
+  Future<void> _addNewSubject() async {
+    final ctrl = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: AppColors.surface,
+        title: const Text('New Subject',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Subject name',
+            hintStyle: TextStyle(
+                color: AppColors.textSecondary.withValues(alpha: 0.5)),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.divider)),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.divider)),
+            focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.action)),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.action,
+                foregroundColor: AppColors.surface,
+                shape: const StadiumBorder()),
+            child: const Text('Add',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+    if (name != null && name.isNotEmpty) {
+      setState(() {
+        if (!_subjects.contains(name)) _subjects.add(name);
+        _selectedSubject = name;
       });
     }
   }
@@ -604,6 +679,22 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
                             onSelect: (r) =>
                                 setState(() => _selectedRoadmap = r),
                             onAdd: _addNewProject,
+                          ),
+                        ),
+                      ),
+
+                    // ── Subject panel ────────────────────────────────────
+                    if (!_isRoadmapTask && ['Assignment', 'Quiz', 'Paper'].contains(_selectedRoadmap))
+                      _AnimatedSection(
+                        visible: _projectExpanded,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                          child: _ProjectPanel(
+                            roadmaps: _subjects,
+                            selected: _selectedSubject ?? 'None',
+                            colorFor: _projectColor,
+                            onSelect: (s) => setState(() => _selectedSubject = s == 'None' ? null : s),
+                            onAdd: _addNewSubject,
                           ),
                         ),
                       ),
@@ -1203,32 +1294,42 @@ class _SchedulingPanel extends StatelessWidget {
         children: [
           // Quick date row
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _QuickDateChip(
-                label: 'Today',
-                selected: isQuickDate(0),
-                onTap: () => onQuickDate(0),
-              ),
-              const SizedBox(width: 8),
-              _QuickDateChip(
-                label: 'Tomorrow',
-                selected: isQuickDate(1),
-                onTap: () => onQuickDate(1),
-              ),
-              const SizedBox(width: 8),
-              _QuickDateChip(
-                label: 'Pick date & time',
-                icon: Icons.calendar_month_rounded,
-                selected: dueAt != null && !isQuickDate(0) && !isQuickDate(1),
-                onTap: onPickDate,
+              Expanded(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _QuickDateChip(
+                      label: 'Today',
+                      selected: isQuickDate(0),
+                      onTap: () => onQuickDate(0),
+                    ),
+                    _QuickDateChip(
+                      label: 'Tomorrow',
+                      selected: isQuickDate(1),
+                      onTap: () => onQuickDate(1),
+                    ),
+                    _QuickDateChip(
+                      label: 'Pick date & time',
+                      icon: Icons.calendar_month_rounded,
+                      selected: dueAt != null && !isQuickDate(0) && !isQuickDate(1),
+                      onTap: onPickDate,
+                    ),
+                  ],
+                ),
               ),
               if (dueAt != null) ...[
-                const Spacer(),
+                const SizedBox(width: 8),
                 GestureDetector(
                   onTap: onClear,
-                  child: Icon(Icons.close_rounded,
-                      size: 18,
-                      color: AppColors.textSecondary.withValues(alpha: 0.5)),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8), // align with first row of chips
+                    child: Icon(Icons.close_rounded,
+                        size: 18,
+                        color: AppColors.textSecondary.withValues(alpha: 0.5)),
+                  ),
                 ),
               ],
             ],

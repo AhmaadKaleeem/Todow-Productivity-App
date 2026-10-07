@@ -7,10 +7,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/domain/models/timetable_entry.dart';
 import 'package:todow/presentation/providers/timetable_providers.dart';
 import 'package:todow/presentation/providers/task_providers.dart';
-import 'package:todow/presentation/screens/app_shell.dart';
+
 import 'package:todow/presentation/screens/timetable_import_screen.dart';
 import 'package:todow/presentation/widgets/timetable_editor.dart';
 import 'package:todow/presentation/widgets/timetable_semantics.dart';
+import 'package:todow/presentation/widgets/beautiful_back_button.dart';
 
 const List<Color> _kTimetableColors = [
   Color(0xFF1E3A8A), // deep navy
@@ -283,10 +284,8 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        leading: IconButton(
-            tooltip: 'Back to Home',
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => AppShellScope.of(context).selectPage(0)),
+        leadingWidth: 86,
+        leading: const Center(child: Padding(padding: EdgeInsets.only(left: 16), child: BeautifulBackButton())),
         title: const Text('Timetable'),
         actions: [
           IconButton(

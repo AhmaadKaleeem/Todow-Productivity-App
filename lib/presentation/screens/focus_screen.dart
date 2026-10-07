@@ -9,6 +9,7 @@ import 'package:todow/domain/models/focus_session.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/presentation/providers/task_providers.dart';
 import 'package:todow/presentation/providers/focus_providers.dart';
+import 'package:todow/presentation/widgets/beautiful_back_button.dart';
 
 class FocusScreen extends ConsumerStatefulWidget {
   const FocusScreen({super.key});
@@ -48,7 +49,11 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
           focus: focus);
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Focus')),
+      appBar: AppBar(
+        leadingWidth: 86,
+        leading: const Center(child: Padding(padding: EdgeInsets.only(left: 16), child: BeautifulBackButton())),
+        title: const Text('Focus'),
+      ),
       body: ListView(padding: const EdgeInsets.all(20), children: [
         Text('A deliberate block of attention.',
             style: Theme.of(context).textTheme.headlineMedium),

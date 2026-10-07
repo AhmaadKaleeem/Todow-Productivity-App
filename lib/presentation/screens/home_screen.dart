@@ -1449,22 +1449,27 @@ class _TaskRowState extends State<_TaskRow>
                     widget.task.category!.isNotEmpty)
                   Flexible(
                     flex: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _getCategoryColor(widget.task.category!)
-                            .withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        widget.task.category!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _getCategoryColor(widget.task.category!)),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 100),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getCategoryColor(widget.task.category!)
+                              .withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          widget.task.subject != null
+                              ? '${widget.task.category} • ${widget.task.subject}'
+                              : widget.task.category!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: _getCategoryColor(widget.task.category!)),
+                        ),
                       ),
                     ),
                   ),
@@ -1894,7 +1899,9 @@ class _TodayTaskRow extends StatelessWidget {
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            task.category!,
+                            task.subject != null
+                                ? '${task.category} • ${task.subject}'
+                                : task.category!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(

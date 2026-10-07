@@ -7,7 +7,7 @@ import 'package:todow/presentation/widgets/attachment_row.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/core/providers/service_providers.dart';
-import 'task_controller_test.dart' show MockTaskRepository, MockReminderScheduler, MockAttachmentRepository, MockFileStorage;
+import 'task_controller_test.dart' show MockAttachmentRepository, MockFileStorage;
 
 class _ThumbFileStorage extends MockFileStorage {
   final String thumbPath;
@@ -42,7 +42,6 @@ void main() {
       updatedAt: DateTime.now(),
     );
     
-    final mockRepo = MockTaskRepository();
     final mockAttachmentRepo = MockAttachmentRepository();
     
     // But since MockFileStorage just returns '', we need to override it if we want to test thumbnails

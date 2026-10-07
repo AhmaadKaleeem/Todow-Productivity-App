@@ -17,6 +17,7 @@ class Task {
     this.startAt,
     this.dueAt,
     this.category,
+    this.subject,
     this.topicId,
     this.tags = const [],
     this.subtasks = const [],
@@ -42,6 +43,7 @@ class Task {
   final DateTime? startAt;
   final DateTime? dueAt;
   final String? category;
+  final String? subject;
   final String? topicId;
   final List<String> tags;
   final List<Subtask> subtasks;
@@ -84,6 +86,8 @@ class Task {
     bool clearDueAt = false,
     String? category,
     bool clearCategory = false,
+    String? subject,
+    bool clearSubject = false,
     String? topicId,
     bool clearTopicId = false,
     List<String>? tags,
@@ -106,6 +110,7 @@ class Task {
       startAt: clearStartAt ? null : (startAt ?? this.startAt),
       dueAt: clearDueAt ? null : (dueAt ?? this.dueAt),
       category: clearCategory ? null : (category ?? this.category),
+      subject: clearSubject ? null : (subject ?? this.subject),
       topicId: clearTopicId ? null : (topicId ?? this.topicId),
       tags: tags ?? this.tags,
       subtasks: subtasks ?? this.subtasks,
@@ -129,6 +134,7 @@ class Task {
         'start_at': startAt?.toIso8601String(),
         'due_at': dueAt?.toIso8601String(),
         'category': category,
+        'subject': subject,
         'topic_id': topicId,
         'tags': jsonEncode(tags),
         'reminder_plan': jsonEncode(reminderPlan.toJson()),
@@ -158,6 +164,7 @@ class Task {
           ? DateTime.parse(map['due_at']! as String)
           : null,
       category: map['category'] as String?,
+      subject: map['subject'] as String?,
       topicId: map['topic_id'] as String?,
       tags: List<String>.from(jsonDecode(map['tags']! as String) as List),
       subtasks: subtasks,

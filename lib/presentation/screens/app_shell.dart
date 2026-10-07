@@ -4,6 +4,7 @@ import 'package:todow/core/theme/app_colors.dart';
 import 'package:todow/presentation/app.dart';
 import 'package:todow/presentation/screens/home_screen.dart';
 import 'package:todow/presentation/screens/roadmap_list_screen.dart';
+import 'package:todow/presentation/screens/notification_permission_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,8 +31,33 @@ class AppShellState extends ConsumerState<AppShell>
       duration: const Duration(milliseconds: 300),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(notificationPermissionsProvider.notifier).requestPermissions();
+      _checkPermissions();
     });
+  }
+
+  Future<void> _checkPermissions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasPrompted = prefs.getBool('has_prompted_notifications') ?? false;
+    
+    // We get the current permission status
+    final hasPerms = await ref.read(notificationPermissionsProvider.future);
+    
+    if (!hasPerms && !hasPrompted && mounted) {
+      await prefs.setBool('has_prompted_notifications', true);
+      if (!mounted) return;
+      
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => NotificationPermissionScreen(
+          onEnable: () async {
+            await ref.read(notificationPermissionsProvider.notifier).requestPermissions();
+          },
+        ),
+      );
+    }
   }
 
   @override
