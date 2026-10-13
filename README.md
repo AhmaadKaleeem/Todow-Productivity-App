@@ -20,11 +20,11 @@ Todow solves the common student problem of juggling assignments and deadlines ac
 - **Roadmaps** Build learning plans from connected, progress-tracked Topics. Add and complete Topic tasks, filter them by time, and import or export Roadmaps as CSV or Excel files.
 - **Timetable** Enter classes manually, import a CSV file, or scan an image of your schedule to keep your university classes and personal study blocks in one view. You know exactly where to be without jumping between apps.
 
+
 ### In Progress
-- **Today View** Aggregates overdue, today's, upcoming, active reminders, timetable entries, and active focus sessions.
+- **Focus Mode** Task-linked sessions, timer, pause/resume/end, presets, and basic distraction controls.
 
 ### Future Roadmap
-- **Focus Mode** Task-linked sessions, timer, pause/resume/end, presets, and basic distraction controls.
 - **Google Accounts** Multiple accounts, Gmail to tasks, and Google Calendar sync.
 - **Academic Tools** Import Google Classroom assignments, attach Google Drive files, and pull timetable data.
 - **Sync & Backup** Sync across devices, automatic backups, and offline changes supported.
