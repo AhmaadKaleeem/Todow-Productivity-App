@@ -20,7 +20,8 @@ typedef NotificationTapHandler = void Function(String? payload, String? action);
 // so the DB is already updated before the user opens the app.
 // ─────────────────────────────────────────────────────────────────────────────
 @pragma('vm:entry-point')
-Future<void> notificationBackgroundHandler(NotificationResponse response) async {
+Future<void> notificationBackgroundHandler(
+    NotificationResponse response) async {
   final taskId = response.payload;
   final action = response.actionId;
   if (taskId == null || action == null) return;
@@ -91,7 +92,8 @@ class _BgActionRunner {
       limit: 1,
     );
     if (rows.isEmpty) {
-      debugPrint('[BG] No active reminder found for task $taskId — skipping snooze.');
+      debugPrint(
+          '[BG] No active reminder found for task $taskId — skipping snooze.');
       return;
     }
 
@@ -142,7 +144,8 @@ class _BgActionRunner {
     // Initialise timezone for the background isolate.
     tz_data.initializeTimeZones();
     try {
-      final tz.Location loc = tz.getLocation(await FlutterTimezone.getLocalTimezone());
+      final tz.Location loc =
+          tz.getLocation(await FlutterTimezone.getLocalTimezone());
       tz.setLocalLocation(loc);
     } catch (_) {
       try {
@@ -177,31 +180,17 @@ class _BgActionRunner {
     );
 
     final tzScheduled = tz.TZDateTime.from(fireAt, tz.local);
-    try {
-      await plugin.zonedSchedule(
-        notifId,
-        title,
-        null,
-        tzScheduled,
-        details,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        payload: taskId,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-      );
-    } catch (_) {
-      await plugin.zonedSchedule(
-        notifId,
-        title,
-        null,
-        tzScheduled,
-        details,
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        payload: taskId,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-      );
-    }
+    await plugin.zonedSchedule(
+      notifId,
+      title,
+      null,
+      tzScheduled,
+      details,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      payload: taskId,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
   }
 }
 
@@ -293,8 +282,11 @@ class NotificationServiceImpl implements NotificationService {
           await android?.requestNotificationsPermission() ?? false;
       if (!notificationsAllowed) return false;
       if (await android?.canScheduleExactNotifications() == false) {
-        await android?.requestExactAlarmsPermission();
+        final exactAlarmsAllowed =
+            await android?.requestExactAlarmsPermission() ?? false;
+        if (!exactAlarmsAllowed) return false;
       }
+      await android?.requestFullScreenIntentPermission();
       return true;
     }
     if (Platform.isIOS) {
@@ -326,8 +318,9 @@ class NotificationServiceImpl implements NotificationService {
     String? label,
     bool ringAsAlarm = false,
   }) async {
-    final channel =
-        ringAsAlarm ? channelAlarm : (isConstant ? channelConstant : channelNormal);
+    final channel = ringAsAlarm
+        ? channelAlarm
+        : (isConstant ? channelConstant : channelNormal);
 
     final title = task.title;
     final timeContext = label ?? (isConstant ? 'Still pending' : 'Due now');
@@ -341,7 +334,8 @@ class NotificationServiceImpl implements NotificationService {
         channel,
         isConstant ? 'Constant Reminders' : 'Reminders',
         channelDescription: 'Task reminder notifications',
-        importance: ringAsAlarm || isConstant ? Importance.max : Importance.high,
+        importance:
+            ringAsAlarm || isConstant ? Importance.max : Importance.high,
         priority: ringAsAlarm || isConstant ? Priority.max : Priority.high,
         ongoing: isConstant || ringAsAlarm,
         autoCancel: !isConstant && !ringAsAlarm,
@@ -383,8 +377,7 @@ class NotificationServiceImpl implements NotificationService {
               showsUserInterface: true),
           AndroidNotificationAction('snooze', 'Snooze',
               showsUserInterface: true),
-          AndroidNotificationAction('open', 'Open',
-              showsUserInterface: true),
+          AndroidNotificationAction('open', 'Open', showsUserInterface: true),
         ],
       ),
       iOS: const DarwinNotificationDetails(
@@ -403,32 +396,17 @@ class NotificationServiceImpl implements NotificationService {
           payload: task.id);
     } else {
       final tzScheduled = tz.TZDateTime.from(scheduledAt, tz.local);
-      try {
-        await _plugin.zonedSchedule(
-          notificationId,
-          title,
-          body,
-          tzScheduled,
-          details,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          payload: task.id,
-          uiLocalNotificationDateInterpretation:
-              UILocalNotificationDateInterpretation.absoluteTime,
-        );
-      } catch (e) {
-        debugPrint('Exact alarm unavailable, falling back to inexact: $e');
-        await _plugin.zonedSchedule(
-          notificationId,
-          title,
-          body,
-          tzScheduled,
-          details,
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-          payload: task.id,
-          uiLocalNotificationDateInterpretation:
-              UILocalNotificationDateInterpretation.absoluteTime,
-        );
-      }
+      await _plugin.zonedSchedule(
+        notificationId,
+        title,
+        body,
+        tzScheduled,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: task.id,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
     }
     return notificationId;
   }

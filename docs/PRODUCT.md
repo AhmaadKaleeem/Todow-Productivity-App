@@ -42,6 +42,7 @@ Support local attachments (images, PDFs, local files). Attach, open, remove. SQL
 
 ### FR-03 & FR-04 Reminders & Presets
 Multiple reminders per task (absolute or relative). Snooze, reschedule. Completing task cancels pending reminders.
+On Android, reminders use exact alarms to notify at their scheduled time while Todow is in the background. Alarm mode can ring over the lock screen when Android's alarm and full-screen notification permissions are enabled.
 On first launch, Todow explains that notification access is used for task reminders before opening the operating-system permission prompt. The full-screen prompt can be skipped, and the explanation is shown once.
 Presets:
 - NORMAL: 1 day before + deadline
