@@ -1,4 +1,5 @@
 import 'package:todow/domain/models/task.dart';
+import 'package:todow/domain/models/enums.dart';
 
 enum NotificationAction { complete, snooze, openTask }
 
@@ -14,6 +15,9 @@ abstract class NotificationService {
     required bool isConstant,
     String? label,
     bool ringAsAlarm = false,
+    ReminderAlertBehavior alertBehavior =
+        ReminderAlertBehavior.soundAndVibration,
+    bool repeatDaily = false,
   });
 
   Future<void> cancelNotification(int notificationId);

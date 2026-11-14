@@ -1,4 +1,5 @@
 import 'package:todow/domain/models/task.dart';
+import 'package:todow/domain/models/enums.dart';
 import 'package:todow/domain/services/notification_service.dart';
 
 typedef NotificationTapHandler = void Function(String? payload, String? action);
@@ -27,6 +28,9 @@ class NotificationServiceImpl implements NotificationService {
     required bool isConstant,
     String? label,
     bool ringAsAlarm = false,
+    ReminderAlertBehavior alertBehavior =
+        ReminderAlertBehavior.soundAndVibration,
+    bool repeatDaily = false,
   }) async =>
       notificationId;
 

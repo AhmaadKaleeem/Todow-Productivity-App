@@ -87,50 +87,55 @@ class ReminderSchedulerImpl implements ReminderScheduler {
         isConstant: false,
         label: reminder.label,
         ringAsAlarm: task.reminderPlan.ringAsAlarm,
+        alertBehavior: task.reminderPlan.alertBehavior,
+        repeatDaily: reminder.repeatDaily,
       );
       persisted.add(reminder.copyWith(notificationId: notifId));
     }
 
     if (task.hasConstantReminder) {
-      final constantId = 'constant-${task.id}';
-      final notifId = _notificationIdFor(constantId);
-      idsToCancel.remove(notifId);
-
-      final oldConstant = existingMap[constantId];
-      if (oldConstant?.notificationId != null) {
-        idsToCancel.remove(oldConstant!.notificationId);
-      }
-
       final firstAt = schedule.isNotEmpty
           ? schedule.first.scheduledAt
           : DateTime.now().add(const Duration(minutes: 1));
-
-      final scheduledAt =
-          (oldConstant != null && oldConstant.scheduledAt.isAfter(DateTime.now()))
-              ? oldConstant.scheduledAt
-              : (firstAt.isAfter(DateTime.now())
-                  ? firstAt
-                  : DateTime.now().subtract(const Duration(seconds: 1)));
-
-      await _notifications.scheduleTaskReminder(
-        task: task,
-        scheduledAt: scheduledAt,
-        notificationId: notifId,
-        isConstant: true,
-        label: 'Constant reminder active',
-        ringAsAlarm: task.reminderPlan.ringAsAlarm,
+      final interval = Duration(
+        minutes: task.reminderPlan.constantIntervalMinutes.clamp(1, 1440),
       );
-      persisted.add(
-        ScheduledReminder(
-          id: constantId,
-          taskId: task.id,
-          scheduledAt: scheduledAt,
-          status: oldConstant?.status ?? ReminderStatus.pending,
-          kind: ReminderKind.constant,
+      var scheduledAt =
+          firstAt.isAfter(DateTime.now()) ? firstAt : DateTime.now();
+
+      // Queue a day of native alarms so delivery continues while Flutter is
+      // stopped. Completion cancels the persisted chain; the next app launch
+      // replenishes it for tasks that remain pending.
+      for (var index = 0; index < 96; index++) {
+        final constantId = 'constant-${task.id}-$index';
+        final notifId = _notificationIdFor(constantId);
+        final constantAt = _nextAllowedConstantTime(task, scheduledAt);
+        idsToCancel.remove(notifId);
+        await _notifications.scheduleTaskReminder(
+          task: task,
+          scheduledAt: constantAt,
           notificationId: notifId,
+          isConstant: true,
           label: 'Constant reminder',
-        ),
-      );
+          ringAsAlarm: task.reminderPlan.ringAsAlarm,
+          alertBehavior: task.reminderPlan.alertBehavior ==
+                  ReminderAlertBehavior.soundAndVibration
+              ? ReminderAlertBehavior.repeated
+              : task.reminderPlan.alertBehavior,
+        );
+        persisted.add(
+          ScheduledReminder(
+            id: constantId,
+            taskId: task.id,
+            scheduledAt: constantAt,
+            status: ReminderStatus.pending,
+            kind: ReminderKind.constant,
+            notificationId: notifId,
+            label: 'Constant reminder',
+          ),
+        );
+        scheduledAt = constantAt.add(interval);
+      }
     }
 
     // Cancel any OS alarms that are no longer in the new schedule.
@@ -172,6 +177,8 @@ class ReminderSchedulerImpl implements ReminderScheduler {
       isConstant: reminder.kind == ReminderKind.constant,
       label: 'Snoozed',
       ringAsAlarm: task.reminderPlan.ringAsAlarm,
+      alertBehavior: task.reminderPlan.alertBehavior,
+      repeatDaily: reminder.repeatDaily,
     );
     await _tasks.updateReminder(
       reminder.copyWith(
@@ -207,6 +214,7 @@ class ReminderSchedulerImpl implements ReminderScheduler {
     await _notifications.scheduleConstantFollowUp(
       task: task,
       notificationId: constant!.notificationId!,
+      interval: Duration(minutes: task.reminderPlan.constantIntervalMinutes),
     );
   }
 
@@ -231,6 +239,27 @@ class ReminderSchedulerImpl implements ReminderScheduler {
       if (task == null || task.isCompleted || task.isArchived) continue;
       await syncTaskReminders(task);
     }
+  }
+
+  DateTime _nextAllowedConstantTime(Task task, DateTime candidate) {
+    final start = task.reminderPlan.quietHoursStartMinutes;
+    final end = task.reminderPlan.quietHoursEndMinutes;
+    if (start == null || end == null) return candidate;
+
+    var result = candidate;
+    for (var i = 0; i < 2; i++) {
+      final minutes = result.hour * 60 + result.minute;
+      final inQuietHours = start < end
+          ? minutes >= start && minutes < end
+          : minutes >= start || minutes < end;
+      if (!inQuietHours) return result;
+      result = start < end || minutes >= start
+          ? DateTime(result.year, result.month, result.day + 1, end ~/ 60,
+              end % 60)
+          : DateTime(
+              result.year, result.month, result.day, end ~/ 60, end % 60);
+    }
+    return result;
   }
 }
 

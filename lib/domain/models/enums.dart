@@ -4,13 +4,21 @@ enum TaskPriority { none, low, medium, high, critical }
 
 enum TaskSourceType { local, gmail, classroom, airUniversity, calendar }
 
-enum ReminderPreset { normal, assignment, critical, custom }
+enum ReminderPreset { normal, assignment, critical, daily, custom }
+
+enum ReminderAlertBehavior {
+  silent,
+  beep,
+  soundAndVibration,
+  fullScreen,
+  repeated,
+}
 
 enum ReminderStatus { pending, fired, snoozed, handled, cancelled }
 
-enum ReminderKind { relative, absolute, atDeadline, constant }
+enum ReminderKind { relative, absolute, atDeadline, daily, constant }
 
-enum FocusPreset { study, coding, assignment, reading, deepWork }
+enum FocusPreset { study, coding, assignment, reading, deepWork, flow }
 
 enum FocusSessionStatus { idle, running, paused, ended }
 
@@ -68,6 +76,8 @@ extension ReminderPresetExt on ReminderPreset {
         return 'Assignment';
       case ReminderPreset.critical:
         return 'Critical';
+      case ReminderPreset.daily:
+        return 'Daily';
       case ReminderPreset.custom:
         return 'Custom';
     }
@@ -87,6 +97,8 @@ extension FocusPresetExt on FocusPreset {
         return 'Reading';
       case FocusPreset.deepWork:
         return 'Deep Work';
+      case FocusPreset.flow:
+        return 'Ultradian';
     }
   }
 
@@ -102,6 +114,17 @@ extension FocusPresetExt on FocusPreset {
         return const Duration(minutes: 45);
       case FocusPreset.deepWork:
         return const Duration(minutes: 120);
+      case FocusPreset.flow:
+        return const Duration(minutes: 90);
+    }
+  }
+
+  Duration get restDuration {
+    switch (this) {
+      case FocusPreset.flow:
+        return const Duration(minutes: 20);
+      default:
+        return const Duration(minutes: 5);
     }
   }
 }

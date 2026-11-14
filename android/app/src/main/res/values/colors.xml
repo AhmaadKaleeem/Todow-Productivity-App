@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="todow_background">#F5F1EA</color>
+    <color name="todow_surface">#FFFFFF</color>
+    <color name="todow_surface_elevated">#FAF7F2</color>
+    <color name="todow_text_primary">#1A1D24</color>
+    <color name="todow_text_secondary">#78716C</color>
+    <color name="todow_action">#0EA5E9</color>
+    <color name="todow_attention">#F59E0B</color>
+    <color name="todow_alert">#EF4444</color>
+    <color name="todow_divider">#E8E3DA</color>
 </resources>

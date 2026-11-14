@@ -1,11 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Color;
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart' as sqf;
 import 'package:todow/domain/models/task.dart';
+import 'package:todow/domain/models/enums.dart';
 import 'package:todow/domain/services/notification_service.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -55,12 +56,24 @@ class _BgActionRunner {
       switch (action) {
         case 'complete':
           await _completeTask(db, taskId);
+          _stopNativeAlarm();
         case 'snooze':
           await _snoozeTask(db, taskId);
+          _stopNativeAlarm();
+        case 'dismiss':
+          _stopNativeAlarm();
+          debugPrint('[BG] Alarm stopped for task $taskId');
       }
     } finally {
       await db.close();
     }
+  }
+
+  static void _stopNativeAlarm() {
+    try {
+      const MethodChannel('com.example.todow/alarm_native')
+          .invokeMethod('stopAlarm');
+    } catch (_) {}
   }
 
   // Mark task completed and remove all its pending reminders.
@@ -72,6 +85,20 @@ class _BgActionRunner {
       where: 'id = ?',
       whereArgs: [taskId],
     );
+    final rows = await db.query(
+      'scheduled_reminders',
+      columns: ['notification_id'],
+      where: 'task_id = ? AND notification_id IS NOT NULL',
+      whereArgs: [taskId],
+    );
+    final plugin = FlutterLocalNotificationsPlugin();
+    await plugin.initialize(const InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+    ));
+    for (final row in rows) {
+      final id = row['notification_id'] as int?;
+      if (id != null) await plugin.cancel(id);
+    }
     await db.delete(
       'scheduled_reminders',
       where: 'task_id = ? AND status IN (?, ?)',
@@ -140,6 +167,8 @@ class _BgActionRunner {
     required String title,
     required int notifId,
     required DateTime fireAt,
+    bool isAlarm = false,
+    String soundKey = 'alarm_sound',
   }) async {
     // Initialise timezone for the background isolate.
     tz_data.initializeTimeZones();
@@ -159,34 +188,81 @@ class _BgActionRunner {
     final plugin = FlutterLocalNotificationsPlugin();
     await plugin.initialize(const InitializationSettings(android: androidInit));
 
-    const details = NotificationDetails(
+    final channelId = isAlarm
+        ? (soundKey == 'alarm_sound'
+            ? NotificationServiceImpl.channelAlarm
+            : '${NotificationServiceImpl.channelAlarm}_$soundKey')
+        : NotificationServiceImpl.channelNormal;
+
+    final hour = fireAt.hour;
+    final minute = fireAt.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final h12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    final snoozeTiming = 'Snoozed · Due $h12:$minute $period';
+
+    final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        'reminders',
-        'Reminders',
-        channelDescription: 'Task reminder notifications',
-        importance: Importance.high,
-        priority: Priority.high,
-        // Brand color: Todow action blue
-        color: Color(0xFF0EA5E9),
-        subText: 'Snoozed',
-        actions: [
-          AndroidNotificationAction('complete', 'Done',
-              showsUserInterface: true),
-          AndroidNotificationAction('snooze', 'Snooze',
-              showsUserInterface: true),
-          AndroidNotificationAction('open', 'Open', showsUserInterface: true),
-        ],
+        channelId,
+        isAlarm ? 'Task Alarms' : 'Reminders',
+        channelDescription: isAlarm
+            ? 'High-priority task alarms that ring continuously'
+            : 'Task reminder notifications',
+        importance: Importance.max,
+        priority: Priority.max,
+        ongoing: isAlarm,
+        autoCancel: !isAlarm,
+        showWhen: false,
+        color: const Color(0xFF0EA5E9),
+        subText: null,
+        sound: isAlarm ? RawResourceAndroidNotificationSound(soundKey) : null,
+        audioAttributesUsage: isAlarm
+            ? AudioAttributesUsage.alarm
+            : AudioAttributesUsage.notification,
+        category: isAlarm
+            ? AndroidNotificationCategory.alarm
+            : AndroidNotificationCategory.reminder,
+        fullScreenIntent: isAlarm,
+        additionalFlags: isAlarm ? Int32List.fromList(<int>[4]) : null,
+        styleInformation: BigTextStyleInformation(
+          snoozeTiming,
+          contentTitle: title,
+          summaryText: null,
+          htmlFormatContent: false,
+          htmlFormatContentTitle: false,
+        ),
+        actions: isAlarm
+            ? const [
+                AndroidNotificationAction('complete', 'Done',
+                    showsUserInterface: true, cancelNotification: true),
+                AndroidNotificationAction('snooze', 'Snooze 10m',
+                    showsUserInterface: true, cancelNotification: true),
+                AndroidNotificationAction('dismiss', 'Stop Alarm',
+                    showsUserInterface: false, cancelNotification: true),
+              ]
+            : const [
+                AndroidNotificationAction('complete', 'Done',
+                    showsUserInterface: true, cancelNotification: true),
+                AndroidNotificationAction('snooze', 'Snooze 10m',
+                    showsUserInterface: true, cancelNotification: true),
+                AndroidNotificationAction('open', 'Open',
+                    showsUserInterface: true, cancelNotification: true),
+              ],
       ),
     );
 
     final tzScheduled = tz.TZDateTime.from(fireAt, tz.local);
+    final androidPlugin = plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    final exact = await androidPlugin?.canScheduleExactNotifications() ?? true;
     await plugin.zonedSchedule(
       notifId,
       title,
-      null,
+      snoozeTiming,
       tzScheduled,
       details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: exact
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexactAllowWhileIdle,
       payload: taskId,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
@@ -200,10 +276,62 @@ class NotificationServiceImpl implements NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   final NotificationTapHandler? onAction;
+  bool _exactAlarmsAvailable = true;
 
   static const channelNormal = 'reminders';
   static const channelConstant = 'constant_reminders';
-  static const channelAlarm = 'alarms';
+  static const channelAlarm = 'alarms_v4';
+  static const channelSilent = 'reminders_silent';
+  static const channelBeep = 'reminders_beep';
+  static const channelVibration = 'reminders_vibration';
+
+  static const List<String> alarmSoundKeys = [
+    'alarm_sound',
+    'alarm_classic',
+    'alarm_gentle',
+    'alarm_urgent',
+  ];
+
+  static String _formatTimingContext({
+    required String? label,
+    required DateTime? dueAt,
+    required bool isConstant,
+  }) {
+    String dueTimeStr = '';
+    if (dueAt != null) {
+      final hour = dueAt.hour;
+      final minute = dueAt.minute.toString().padLeft(2, '0');
+      final period = hour >= 12 ? 'PM' : 'AM';
+      final h12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+      dueTimeStr = ' · $h12:$minute $period';
+    }
+
+    if (isConstant) {
+      return 'Still pending$dueTimeStr';
+    }
+
+    if (label == null || label.trim().isEmpty) {
+      return 'Due now$dueTimeStr';
+    }
+
+    final lower = label.trim().toLowerCase();
+    if (lower == 'at deadline') {
+      return 'Deadline reached$dueTimeStr';
+    }
+    if (lower == 'daily reminder') {
+      return 'Daily reminder$dueTimeStr';
+    }
+    if (lower == 'snoozed') {
+      return 'Snoozed$dueTimeStr';
+    }
+    if (lower.endsWith('before')) {
+      final duration =
+          label.trim().substring(0, label.trim().length - 6).trim();
+      return 'Due in $duration$dueTimeStr';
+    }
+
+    return '$label$dueTimeStr';
+  }
 
   @override
   Future<void> initialize() async {
@@ -239,6 +367,8 @@ class NotificationServiceImpl implements NotificationService {
     if (Platform.isAndroid) {
       final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
+      _exactAlarmsAvailable =
+          await androidPlugin?.canScheduleExactNotifications() ?? true;
 
       await androidPlugin?.createNotificationChannel(
         const AndroidNotificationChannel(
@@ -246,6 +376,36 @@ class NotificationServiceImpl implements NotificationService {
           'Reminders',
           description: 'Task reminder notifications',
           importance: Importance.high,
+        ),
+      );
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          channelSilent,
+          'Silent reminders',
+          description: 'Task reminders without sound or vibration',
+          importance: Importance.high,
+          playSound: false,
+          enableVibration: false,
+        ),
+      );
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          channelBeep,
+          'Beep reminders',
+          description: 'Task reminders with a short notification sound',
+          importance: Importance.high,
+          playSound: true,
+          enableVibration: false,
+        ),
+      );
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          channelVibration,
+          'Sound and vibration reminders',
+          description: 'Task reminders with sound and vibration',
+          importance: Importance.high,
+          playSound: true,
+          enableVibration: true,
         ),
       );
 
@@ -258,18 +418,40 @@ class NotificationServiceImpl implements NotificationService {
         ),
       );
 
-      // Alarm channel: max importance, full vibration pattern.
-      await androidPlugin?.createNotificationChannel(
-        AndroidNotificationChannel(
-          channelAlarm,
-          'Alarms',
-          description: 'Full-screen task alarms',
-          importance: Importance.max,
-          playSound: true,
-          enableVibration: true,
-          vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
-        ),
-      );
+      // Delete legacy alarm channels so Android system updates to the new alarm sound and audio attributes
+      try {
+        await androidPlugin?.deleteNotificationChannel('alarms');
+        await androidPlugin?.deleteNotificationChannel('alarms_v2');
+        await androidPlugin?.deleteNotificationChannel('alarms_v3');
+      } catch (_) {}
+
+      // Create alarm channels for each selectable sound (Android channel sound cannot change once created)
+      final soundLabels = {
+        'alarm_sound': 'Default Alarm',
+        'alarm_classic': 'Classic Digital',
+        'alarm_gentle': 'Gentle Chime',
+        'alarm_urgent': 'Urgent Radar',
+      };
+
+      for (final soundKey in alarmSoundKeys) {
+        final channelId = soundKey == 'alarm_sound'
+            ? channelAlarm
+            : '${channelAlarm}_$soundKey';
+        final soundLabel = soundLabels[soundKey] ?? 'Alarm';
+        await androidPlugin?.createNotificationChannel(
+          AndroidNotificationChannel(
+            channelId,
+            'Task Alarms ($soundLabel)',
+            description: 'High-priority task alarms that ring continuously',
+            importance: Importance.max,
+            playSound: true,
+            sound: RawResourceAndroidNotificationSound(soundKey),
+            audioAttributesUsage: AudioAttributesUsage.alarm,
+            enableVibration: true,
+            vibrationPattern: Int64List.fromList([0, 800, 400, 800, 400, 1000]),
+          ),
+        );
+      }
     }
   }
 
@@ -282,9 +464,9 @@ class NotificationServiceImpl implements NotificationService {
           await android?.requestNotificationsPermission() ?? false;
       if (!notificationsAllowed) return false;
       if (await android?.canScheduleExactNotifications() == false) {
-        final exactAlarmsAllowed =
-            await android?.requestExactAlarmsPermission() ?? false;
-        if (!exactAlarmsAllowed) return false;
+        await android?.requestExactAlarmsPermission();
+        _exactAlarmsAvailable =
+            await android?.canScheduleExactNotifications() ?? false;
       }
       await android?.requestFullScreenIntentPermission();
       return true;
@@ -317,68 +499,136 @@ class NotificationServiceImpl implements NotificationService {
     required bool isConstant,
     String? label,
     bool ringAsAlarm = false,
+    ReminderAlertBehavior alertBehavior =
+        ReminderAlertBehavior.soundAndVibration,
+    bool repeatDaily = false,
   }) async {
-    final channel = ringAsAlarm
-        ? channelAlarm
-        : (isConstant ? channelConstant : channelNormal);
+    final alarmMode = ringAsAlarm;
+    final repeated =
+        alertBehavior == ReminderAlertBehavior.repeated || isConstant;
+    final isInsistent = alarmMode || repeated;
+    final isNativeAlarm = alarmMode && Platform.isAndroid;
+
+    final soundKey = task.reminderPlan.alarmSoundId.isNotEmpty
+        ? task.reminderPlan.alarmSoundId
+        : 'alarm_sound';
+
+    if (isNativeAlarm && scheduledAt.isAfter(DateTime.now())) {
+      await _plugin.cancel(notificationId);
+      await const MethodChannel('com.example.todow/alarm_native').invokeMethod(
+        'scheduleAlarm',
+        {
+          'notificationId': notificationId,
+          'triggerAt': scheduledAt.millisecondsSinceEpoch,
+          'taskId': task.id,
+          'taskTitle': task.title,
+          'soundName': soundKey,
+        },
+      );
+      return notificationId;
+    }
+
+    final channel = alarmMode
+        ? (soundKey == 'alarm_sound'
+            ? channelAlarm
+            : '${channelAlarm}_$soundKey')
+        : isConstant
+            ? channelConstant
+            : switch (alertBehavior) {
+                ReminderAlertBehavior.silent => channelSilent,
+                ReminderAlertBehavior.beep => channelBeep,
+                _ => channelVibration,
+              };
 
     final title = task.title;
-    final timeContext = label ?? (isConstant ? 'Still pending' : 'Due now');
-    final hasDescription = task.description.isNotEmpty;
+    final timingLine = _formatTimingContext(
+      label: label,
+      dueAt: task.dueAt,
+      isConstant: isConstant,
+    );
+    final hasDescription = task.description.trim().isNotEmpty;
 
-    // Body: description when present, otherwise null (clean single-line look).
-    final body = hasDescription ? task.description : null;
+    // Collapsed body: single-line summary with timing and optional description snippet
+    final collapsedBody = hasDescription
+        ? '$timingLine — ${task.description.trim()}'
+        : timingLine;
+
+    // Expanded body: dynamic multi-line formatting with clean separation
+    final expandedBody = hasDescription
+        ? '$timingLine\n\n${task.description.trim()}'
+        : timingLine;
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
         channel,
-        isConstant ? 'Constant Reminders' : 'Reminders',
-        channelDescription: 'Task reminder notifications',
-        importance:
-            ringAsAlarm || isConstant ? Importance.max : Importance.high,
-        priority: ringAsAlarm || isConstant ? Priority.max : Priority.high,
-        ongoing: isConstant || ringAsAlarm,
-        autoCancel: !isConstant && !ringAsAlarm,
+        alarmMode
+            ? 'Task Alarms'
+            : (isConstant ? 'Constant Reminders' : 'Reminders'),
+        channelDescription: alarmMode
+            ? 'High-priority task alarms that ring continuously'
+            : 'Task reminder notifications',
+        importance: isInsistent ? Importance.max : Importance.high,
+        priority: isInsistent ? Priority.max : Priority.high,
+        ongoing: isInsistent,
+        autoCancel: !isInsistent,
+        showWhen:
+            false, // Prevents Android adding confusing relative timestamps like "now"
 
         // Full-screen intent (alarm-style UI overlay) — only for alarm mode.
-        fullScreenIntent: ringAsAlarm,
+        fullScreenIntent: alarmMode,
 
-        // FLAG_INSISTENT (bit 4 = decimal 4) makes the alarm ring continuously.
-        additionalFlags: ringAsAlarm ? Int32List.fromList(<int>[4]) : null,
+        // FLAG_INSISTENT (bit 4 = decimal 4) makes the alarm audio repeat continuously until dismissed/snoozed.
+        additionalFlags: isInsistent ? Int32List.fromList(<int>[4]) : null,
 
-        category: ringAsAlarm
+        category: alarmMode
             ? AndroidNotificationCategory.alarm
             : AndroidNotificationCategory.reminder,
-        audioAttributesUsage: ringAsAlarm
+        audioAttributesUsage: alarmMode
             ? AudioAttributesUsage.alarm
             : AudioAttributesUsage.notification,
+        sound: alarmMode ? RawResourceAndroidNotificationSound(soundKey) : null,
         visibility: NotificationVisibility.public,
-
-        // Brand accent colour on the notification icon badge.
-        color: const Color(0xFF0EA5E9),
-
-        // subText shows the context label (e.g. "1 day before") next to the
-        // app name — no need to repeat it in the body or summary.
-        subText: timeContext,
-
-        // Only expand when there is actual content to show.
-        // Remove summaryText repetition — subText already carries the context.
-        styleInformation: hasDescription
-            ? BigTextStyleInformation(
-                task.description,
-                contentTitle: title,
-                htmlFormatContent: false,
-                htmlFormatContentTitle: false,
-              )
+        playSound: alertBehavior != ReminderAlertBehavior.silent,
+        enableVibration:
+            alertBehavior == ReminderAlertBehavior.soundAndVibration ||
+                alarmMode ||
+                repeated,
+        vibrationPattern: alarmMode
+            ? Int64List.fromList([0, 800, 400, 800, 400, 1000])
             : null,
 
-        actions: const [
-          AndroidNotificationAction('complete', 'Done',
-              showsUserInterface: true),
-          AndroidNotificationAction('snooze', 'Snooze',
-              showsUserInterface: true),
-          AndroidNotificationAction('open', 'Open', showsUserInterface: true),
-        ],
+        // Brand accent colour on the notification icon badge (Azure).
+        color: const Color(0xFF0EA5E9),
+
+        // Keep subText null so OEM launchers display the clean app name "Todow" instead of duplicating timestamps
+        subText: null,
+
+        // Dynamic BigTextStyle: expands cleanly to accommodate all lines without clipping
+        styleInformation: BigTextStyleInformation(
+          expandedBody,
+          contentTitle: title,
+          summaryText: null,
+          htmlFormatContent: false,
+          htmlFormatContentTitle: false,
+        ),
+
+        actions: alarmMode
+            ? const [
+                AndroidNotificationAction('complete', 'Done',
+                    showsUserInterface: true, cancelNotification: true),
+                AndroidNotificationAction('snooze', 'Snooze 10m',
+                    showsUserInterface: true, cancelNotification: true),
+                AndroidNotificationAction('dismiss', 'Stop Alarm',
+                    showsUserInterface: false, cancelNotification: true),
+              ]
+            : const [
+                AndroidNotificationAction('complete', 'Done',
+                    showsUserInterface: true, cancelNotification: true),
+                AndroidNotificationAction('snooze', 'Snooze 10m',
+                    showsUserInterface: true, cancelNotification: true),
+                AndroidNotificationAction('open', 'Open',
+                    showsUserInterface: true, cancelNotification: true),
+              ],
       ),
       iOS: const DarwinNotificationDetails(
           presentAlert: true, presentSound: true),
@@ -392,28 +642,72 @@ class NotificationServiceImpl implements NotificationService {
 
     if (scheduledAt.isBefore(DateTime.now())) {
       // Past / overdue — fire immediately.
-      await _plugin.show(notificationId, title, body, details,
+      if (isNativeAlarm) {
+        await const MethodChannel('com.example.todow/alarm_native')
+            .invokeMethod('startAlarm', {
+          'taskId': task.id,
+          'taskTitle': task.title,
+          'soundName': soundKey,
+        });
+        return notificationId;
+      }
+      await _plugin.show(notificationId, title, collapsedBody, details,
           payload: task.id);
     } else {
       final tzScheduled = tz.TZDateTime.from(scheduledAt, tz.local);
-      await _plugin.zonedSchedule(
-        notificationId,
-        title,
-        body,
-        tzScheduled,
-        details,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        payload: task.id,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-      );
+      try {
+        await _plugin.zonedSchedule(
+          notificationId,
+          title,
+          collapsedBody,
+          tzScheduled,
+          details,
+          androidScheduleMode: _exactAlarmsAvailable
+              ? AndroidScheduleMode.exactAllowWhileIdle
+              : AndroidScheduleMode.inexactAllowWhileIdle,
+          payload: task.id,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: repeatDaily ? DateTimeComponents.time : null,
+        );
+      } catch (e) {
+        if (_exactAlarmsAvailable) {
+          _exactAlarmsAvailable = false;
+          try {
+            await _plugin.zonedSchedule(
+              notificationId,
+              title,
+              collapsedBody,
+              tzScheduled,
+              details,
+              androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+              payload: task.id,
+              uiLocalNotificationDateInterpretation:
+                  UILocalNotificationDateInterpretation.absoluteTime,
+              matchDateTimeComponents:
+                  repeatDaily ? DateTimeComponents.time : null,
+            );
+          } catch (e2) {
+            debugPrint('[ERR-NOTIF] Inexact fallback schedule failed: $e2');
+          }
+        } else {
+          debugPrint('[ERR-NOTIF] Notification schedule failed: $e');
+        }
+      }
     }
     return notificationId;
   }
 
   @override
-  Future<void> cancelNotification(int notificationId) =>
-      _plugin.cancel(notificationId);
+  Future<void> cancelNotification(int notificationId) async {
+    if (Platform.isAndroid) {
+      await const MethodChannel('com.example.todow/alarm_native').invokeMethod(
+        'cancelAlarm',
+        {'notificationId': notificationId},
+      );
+    }
+    await _plugin.cancel(notificationId);
+  }
 
   @override
   Future<void> cancelAllForTask(

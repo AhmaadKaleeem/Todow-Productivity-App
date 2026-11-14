@@ -48,6 +48,11 @@ class ReminderPlan {
     this.dailyReminderMinutes,
     this.flexibleReminder = false,
     this.ringAsAlarm = false,
+    this.alarmSoundId = 'alarm_sound',
+    this.alertBehavior = ReminderAlertBehavior.soundAndVibration,
+    this.constantIntervalMinutes = 15,
+    this.quietHoursStartMinutes,
+    this.quietHoursEndMinutes,
   });
 
   final ReminderPreset preset;
@@ -58,6 +63,11 @@ class ReminderPlan {
   final int? dailyReminderMinutes;
   final bool flexibleReminder;
   final bool ringAsAlarm;
+  final String alarmSoundId;
+  final ReminderAlertBehavior alertBehavior;
+  final int constantIntervalMinutes;
+  final int? quietHoursStartMinutes;
+  final int? quietHoursEndMinutes;
 
   List<ReminderOffset> get allOffsets => [...offsets, ...customOffsets];
 
@@ -70,6 +80,12 @@ class ReminderPlan {
     bool clearDailyReminder = false,
     bool? flexibleReminder,
     bool? ringAsAlarm,
+    String? alarmSoundId,
+    ReminderAlertBehavior? alertBehavior,
+    int? constantIntervalMinutes,
+    int? quietHoursStartMinutes,
+    int? quietHoursEndMinutes,
+    bool clearQuietHours = false,
   }) {
     return ReminderPlan(
       preset: preset ?? this.preset,
@@ -79,6 +95,14 @@ class ReminderPlan {
       dailyReminderMinutes: clearDailyReminder ? null : (dailyReminderMinutes ?? this.dailyReminderMinutes),
       flexibleReminder: flexibleReminder ?? this.flexibleReminder,
       ringAsAlarm: ringAsAlarm ?? this.ringAsAlarm,
+      alarmSoundId: alarmSoundId ?? this.alarmSoundId,
+      alertBehavior: alertBehavior ?? this.alertBehavior,
+      constantIntervalMinutes:
+          constantIntervalMinutes ?? this.constantIntervalMinutes,
+      quietHoursStartMinutes:
+          clearQuietHours ? null : (quietHoursStartMinutes ?? this.quietHoursStartMinutes),
+      quietHoursEndMinutes:
+          clearQuietHours ? null : (quietHoursEndMinutes ?? this.quietHoursEndMinutes),
     );
   }
 
@@ -90,6 +114,11 @@ class ReminderPlan {
         'dailyReminderMinutes': dailyReminderMinutes,
         'flexibleReminder': flexibleReminder,
         'ringAsAlarm': ringAsAlarm,
+        'alarmSoundId': alarmSoundId,
+        'alertBehavior': alertBehavior.name,
+        'constantIntervalMinutes': constantIntervalMinutes,
+        'quietHoursStartMinutes': quietHoursStartMinutes,
+        'quietHoursEndMinutes': quietHoursEndMinutes,
       };
 
   factory ReminderPlan.fromJson(Map<String, Object?> json) => ReminderPlan(
@@ -106,6 +135,17 @@ class ReminderPlan {
         dailyReminderMinutes: json['dailyReminderMinutes'] as int?,
         flexibleReminder: json['flexibleReminder'] as bool? ?? false,
         ringAsAlarm: json['ringAsAlarm'] as bool? ?? false,
+        alarmSoundId: json['alarmSoundId'] as String? ?? 'alarm_sound',
+        alertBehavior: ReminderAlertBehavior.values.byName(
+          json['alertBehavior'] as String? ??
+              (json['ringAsAlarm'] as bool? ?? false
+                  ? ReminderAlertBehavior.fullScreen.name
+                  : ReminderAlertBehavior.soundAndVibration.name),
+        ),
+        constantIntervalMinutes:
+            json['constantIntervalMinutes'] as int? ?? 15,
+        quietHoursStartMinutes: json['quietHoursStartMinutes'] as int?,
+        quietHoursEndMinutes: json['quietHoursEndMinutes'] as int?,
       );
 }
 
@@ -119,6 +159,7 @@ class ScheduledReminder {
     this.snoozedUntil,
     this.notificationId,
     this.label,
+    this.repeatDaily = false,
   });
 
   final String id;
@@ -129,6 +170,7 @@ class ScheduledReminder {
   final DateTime? snoozedUntil;
   final int? notificationId;
   final String? label;
+  final bool repeatDaily;
 
   bool get isActive =>
       status == ReminderStatus.pending || status == ReminderStatus.snoozed;
@@ -140,6 +182,7 @@ class ScheduledReminder {
     bool clearSnoozedUntil = false,
     int? notificationId,
     String? label,
+    bool? repeatDaily,
   }) {
     return ScheduledReminder(
       id: id,
@@ -150,6 +193,7 @@ class ScheduledReminder {
       snoozedUntil: clearSnoozedUntil ? null : (snoozedUntil ?? this.snoozedUntil),
       notificationId: notificationId ?? this.notificationId,
       label: label ?? this.label,
+      repeatDaily: repeatDaily ?? this.repeatDaily,
     );
   }
 
@@ -162,6 +206,7 @@ class ScheduledReminder {
         'snoozed_until': snoozedUntil?.toIso8601String(),
         'notification_id': notificationId,
         'label': label,
+        'repeat_daily': repeatDaily ? 1 : 0,
       };
 
   factory ScheduledReminder.fromMap(Map<String, Object?> map) =>
@@ -176,5 +221,6 @@ class ScheduledReminder {
             : null,
         notificationId: map['notification_id'] as int?,
         label: map['label'] as String?,
+        repeatDaily: (map['repeat_daily'] as int? ?? 0) == 1,
       );
 }
