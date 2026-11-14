@@ -32,6 +32,11 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+graphify-out/
+android/.gradle/
+android/build/
+ios/Pods/
+coverage/
 
 # Symbolication related
 app.*.symbols
