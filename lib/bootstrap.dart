@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:todow/data/local/app_database.dart';
@@ -159,6 +160,12 @@ class _NotificationActionHandler {
     }
     final task = await _taskRepo.getById(payload);
     if (task == null) return;
+    if (Platform.isAndroid) {
+      try {
+        const MethodChannel('com.example.todow/alarm_native')
+            .invokeMethod('stopAlarm');
+      } catch (_) {}
+    }
     switch (action) {
       case 'complete':
         await tc.completeTask(task.id);
@@ -168,6 +175,9 @@ class _NotificationActionHandler {
         if (active != null) {
           await rs.snoozeReminder(active, const Duration(minutes: 15));
         }
+      case 'dismiss':
+        debugPrint('Alarm dismissed for task ${task.id}');
+        break;
       case 'open':
       default:
         break;

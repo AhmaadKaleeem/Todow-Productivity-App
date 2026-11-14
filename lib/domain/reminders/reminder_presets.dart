@@ -32,6 +32,8 @@ abstract final class ReminderPresets {
         return assignment;
       case ReminderPreset.critical:
         return critical;
+      case ReminderPreset.daily:
+        return const [];
       case ReminderPreset.custom:
         return const [];
     }

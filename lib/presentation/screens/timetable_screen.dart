@@ -306,7 +306,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
         children: [
           // Kind selector — University (navy) / Personal (violet)
           Container(

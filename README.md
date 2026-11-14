@@ -19,10 +19,10 @@ Todow solves the common student problem of juggling assignments and deadlines ac
 - **Dashboard & Task Creation** Review your day from the dashboard and create tasks with their details in one focused form.
 - **Roadmaps** Build learning plans from connected, progress-tracked Topics. Add and complete Topic tasks, filter them by time, and import or export Roadmaps as CSV or Excel files.
 - **Timetable** Enter classes manually, import a CSV file, or scan an image of your schedule to keep your university classes and personal study blocks in one view. You know exactly where to be without jumping between apps.
-
+- **Focus Mode** Immersive, full-screen activity workspaces (Coding, Reading, Study, Deep Work, Assignment) with dynamic timer-responsive visual environments, session persistence, and the scientifically proven **40/10 Flow** Ultradian cycle (40 minutes intense focus + 10 minutes restorative rest).
 
 ### In Progress
-- **Focus Mode** Task-linked sessions, timer, pause/resume/end, presets, and basic distraction controls.
+- **Rest-Time Ambient Music** Built-in restorative audio soundscapes and rest music during the 10-minute break interval, selectable by the user to optimize cognitive recovery.
 
 ### Future Roadmap
 - **Google Accounts** Multiple accounts, Gmail to tasks, and Google Calendar sync.

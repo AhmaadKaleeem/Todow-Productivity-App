@@ -187,7 +187,11 @@ class TaskController extends ChangeNotifier {
       sortOrder: actualSortOrder,
     );
     final saved = await _repo.create(task);
-    await _scheduler.syncTaskReminders(saved);
+    try {
+      await _scheduler.syncTaskReminders(saved);
+    } catch (e, st) {
+      debugPrint('[ERR-TASK-CTRL] syncTaskReminders failed on create: $e\n$st');
+    }
     
     _allTasks = [..._allTasks, saved];
     notifyListeners();
@@ -202,7 +206,11 @@ class TaskController extends ChangeNotifier {
     }
     final updated = task.copyWith(updatedAt: DateTime.now());
     await _repo.update(updated);
-    await _scheduler.syncTaskReminders(updated);
+    try {
+      await _scheduler.syncTaskReminders(updated);
+    } catch (e, st) {
+      debugPrint('[ERR-TASK-CTRL] syncTaskReminders failed on update: $e\n$st');
+    }
     
     final idx = _allTasks.indexWhere((t) => t.id == task.id);
     if (idx != -1) {
@@ -226,7 +234,11 @@ class TaskController extends ChangeNotifier {
     _allTasks[idx] = updated;
     notifyListeners();
     await _repo.update(updated);
-    await _scheduler.cancelTaskReminders(id);
+    try {
+      await _scheduler.cancelTaskReminders(id);
+    } catch (e, st) {
+      debugPrint('[ERR-TASK-CTRL] cancelTaskReminders failed: $e\n$st');
+    }
   }
 
   Future<void> reopenTask(String id) async {
@@ -239,7 +251,11 @@ class TaskController extends ChangeNotifier {
     _allTasks[idx] = updated;
     notifyListeners();
     await _repo.update(updated);
-    await _scheduler.syncTaskReminders(updated);
+    try {
+      await _scheduler.syncTaskReminders(updated);
+    } catch (e, st) {
+      debugPrint('[ERR-TASK-CTRL] syncTaskReminders failed on reopen: $e\n$st');
+    }
   }
 
   Future<void> archiveTask(String id) async {

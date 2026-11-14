@@ -15,6 +15,8 @@ import 'package:todow/presentation/providers/roadmap_providers.dart';
 import 'package:todow/presentation/widgets/attachments_section.dart';
 import 'package:todow/presentation/widgets/reminders_section.dart';
 import 'package:todow/presentation/widgets/subtasks_section.dart';
+import 'package:provider/provider.dart' as provider_pkg;
+import 'package:todow/presentation/controllers/task_controller.dart';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -75,6 +77,7 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
   bool _isAddingToPersonalTimetable = false;
   bool _isOnPersonalTimetable = false;
   bool _canPop = false;
+  bool _isSaving = false;
 
   // Expansion state for progressive disclosure
   bool _schedExpanded = false;
@@ -253,7 +256,87 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
     return '${days[d.weekday - 1]}, ${months[d.month - 1]} ${d.day} · $h12:$mStr $ampm';
   }
 
-  // ── Save ─────────────────────────────────────────────────────────────────
+  // ── Save & Discard ────────────────────────────────────────────────────────
+
+  bool get _hasUnsavedChanges {
+    if (_workingTask == null) {
+      return _title.text.trim().isNotEmpty ||
+          _notes.text.trim().isNotEmpty ||
+          _dueAt != null ||
+          _subtasks.isNotEmpty ||
+          _priority != TaskPriority.none;
+    }
+    return _title.text.trim() != _workingTask!.title ||
+        _notes.text.trim() != _workingTask!.description ||
+        _priority != _workingTask!.priority ||
+        _dueAt != _workingTask!.dueAt ||
+        _selectedSubject != _workingTask!.subject ||
+        _selectedRoadmap != (_workingTask!.category ?? _kRoadmaps.first) ||
+        _subtasks.length != _workingTask!.subtasks.length;
+  }
+
+  Future<bool> _confirmDiscard() async {
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Discard unsaved task?',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: const Text(
+          'You have unsaved changes. Leaving now will discard this task without saving.',
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'Keep editing',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.alert,
+              foregroundColor: Colors.white,
+              shape: const StadiumBorder(),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Discard',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+    return discard ?? false;
+  }
+
+  Future<void> _handleClose() async {
+    if (!_hasUnsavedChanges) {
+      if (mounted) {
+        setState(() => _canPop = true);
+        Navigator.pop(context);
+      }
+      return;
+    }
+    final discard = await _confirmDiscard();
+    if (discard && mounted) {
+      setState(() => _canPop = true);
+      Navigator.pop(context);
+    }
+  }
 
   Future<Task> _autoSave() async {
     if (_workingTask != null) return _workingTask!;
@@ -362,12 +445,19 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
     }
   }
 
-  void _save() {
-    if (_title.text.trim().isNotEmpty) {
-      final tc = ref.read(tasksProvider.notifier);
+  Future<void> _save() async {
+    if (_isSaving) return;
+    final titleText = _title.text.trim();
+    if (titleText.isEmpty) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      final notifier = ref.read(tasksProvider.notifier);
+      Task savedTask;
       if (_workingTask == null) {
-        tc.createTask(
-          title: _title.text.trim(),
+        savedTask = await notifier.createTask(
+          title: titleText,
           description: _notes.text.trim(),
           priority: _priority,
           dueAt: _dueAt,
@@ -378,8 +468,8 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
           reminderPlan: _reminderPlan,
         );
       } else {
-        tc.updateTask(_workingTask!.copyWith(
-          title: _title.text.trim(),
+        savedTask = await notifier.updateTask(_workingTask!.copyWith(
+          title: titleText,
           description: _notes.text.trim(),
           priority: _priority,
           dueAt: _dueAt,
@@ -392,11 +482,38 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
           reminderPlan: _reminderPlan,
         ));
       }
+
+      // Mark working task as updated so _hasUnsavedChanges returns false
+      if (mounted) {
+        setState(() {
+          _workingTask = savedTask;
+          _canPop = true;
+        });
+
+        // Sync with legacy TaskController if available in tree
+        try {
+          final allTasks = ref.read(tasksProvider).valueOrNull ?? [];
+          provider_pkg.Provider.of<TaskController>(context, listen: false)
+              .syncTasks(allTasks);
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } catch (e, st) {
+      debugPrint('[ERR-TASK-SAVE] Error saving task: $e\n$st');
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text('Could not save changes. Please try again.'),
+            ),
+          );
+      }
     }
-    setState(() => _canPop = true);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) Navigator.pop(context);
-    });
   }
 
   // ── Project helpers ───────────────────────────────────────────────────────
@@ -519,8 +636,9 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
 
     return PopScope(
       canPop: _canPop,
-      onPopInvokedWithResult: (did, _) {
-        if (!did) _save();
+      onPopInvokedWithResult: (did, _) async {
+        if (did) return;
+        await _handleClose();
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.dark,
@@ -536,7 +654,7 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
                     ? '${_roadmap?.title ?? 'Roadmap'} / ${_roadmapTopic?.title ?? 'Topic'}'
                     : _selectedRoadmap,
                 isRoadmapTask: _isRoadmapTask,
-                onClose: _save,
+                onClose: _handleClose,
               ),
 
               // ── Scrollable body ──────────────────────────────────────────
@@ -874,29 +992,39 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 child: ElevatedButton(
-                  onPressed: hasTitle ? _save : null,
+                  onPressed: (hasTitle && !_isSaving) ? _save : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
-                        hasTitle ? AppColors.action : AppColors.divider,
+                        (hasTitle && !_isSaving) ? AppColors.action : AppColors.divider,
                     foregroundColor:
-                        hasTitle ? AppColors.surface : AppColors.textSecondary,
+                        (hasTitle && !_isSaving) ? AppColors.surface : AppColors.textSecondary,
                     disabledBackgroundColor: AppColors.divider,
                     minimumSize: const Size(double.infinity, 56),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18)),
                     elevation: 0,
                   ),
-                  child: AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 200),
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: hasTitle
-                          ? AppColors.surface
-                          : AppColors.textSecondary,
-                    ),
-                    child: Text(isNew ? 'Create task' : 'Save changes'),
-                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: hasTitle
+                                ? AppColors.surface
+                                : AppColors.textSecondary,
+                          ),
+                          child: Text(isNew ? 'Create task' : 'Save changes'),
+                        ),
                 ),
               ),
             ),

@@ -4,6 +4,23 @@
 CAPTURE → ORGANIZE → SCHEDULE → REMIND → FOCUS → COMPLETE
 
 ## Product Principles
+
+## Reminders and alerts
+
+Task reminders are persisted locally and scheduled through the native Android
+notification/alarm receiver, so scheduled delivery is independent of the
+Flutter screen or foreground session. Reminder plans support normal,
+assignment, critical, daily, and custom schedules, with selectable silent,
+beep, sound/vibration, full-screen, and repeated alert behavior. Notifications
+feature high-contrast typography, brand Azure accent styling, dynamic BigText
+expansion for multi-line details, and human-readable timing labels ("Due in 15 minutes",
+"Deadline reached"). Mobile alarms feature continuous foreground service audio playback
+on STREAM_ALARM, custom vibration cadences, and lock-screen full-screen overlays
+that persist through notification drawer interactions until dismissed or snoozed
+for 10 minutes. Android
+notification and exact-alarm permissions remain operating-system controls;
+when exact alarms are unavailable, the app falls back to inexact idle-safe
+scheduling rather than silently dropping the reminder. Principles
 - **Personal-first**: Useful to one student without requiring an account, server, or cloud service.
 - **Local-first**: Core functionality works offline.
 - **Reminder reliability**: Reminders are a core product capability, not an optional notification layer.
@@ -59,6 +76,27 @@ The Home screen keeps its three summary cards at the top, then brings today's du
 
 ### FR-08 Focus Mode
 Task-linked sessions, timer, pause/resume/end, presets, basic distraction controls.
+Includes immersive full-screen dynamic environments (Coding terminal, Reading folio, Academic study notebook, Architectural deep work grid, Delive rable checklist, and Ultradian cycle) that dynamically adapt as time progresses. Each mode has its own selected-state accent and animation language, with a fixed action area that keeps pause/resume and End session visible on compact screens.
+Features the research-based **Ultradian** preset of 90 minutes of focused work followed by 20 minutes of recovery, matching the natural human alertness rhythm.
+Rest-time ambient music and soundscapes planned for upcoming release to provide selectable relaxation tracks during the 20-minute break.
+
+#### FR-08.v2 Focus Shield App Blocking (Planned)
+During an active Focus session, Todow will request Android Usage Access permission to monitor and optionally block distracting apps.
+
+**Default behavior (opt-in)**
+- All social media apps (Instagram, TikTok, Twitter/X, Snapchat, YouTube Shorts, Facebook, WhatsApp Status, Reddit, and similar apps) are blocked by default when a session starts.
+- When a blocked app is opened, an overlay appears with a warning that social apps can steal focus while a session is active.
+- The user can choose to dismiss and use the app for a limited window of 2 minutes, after which the reminder re-appears.
+
+**User controls**
+- Before starting a session the user can allow-list specific apps as exceptions that should remain accessible during focus, such as a calculator, reference book, or direct messaging with a study partner.
+- The block list is editable in Settings. Any app can be moved to the exception list permanently.
+- Focus Shield can be fully disabled per-session or globally in Settings.
+
+**Permission flow**
+- On first use, Todow explains that Usage Access is requested for distraction control and directs the user to the system settings page.
+- If the permission is denied, Focus Shield is silently disabled and no session functionality is affected.
+- No app usage data ever leaves the device. The permission is used solely to detect foreground apps and show the overlay.
 
 ### FR-09, FR-10, FR-11 Timetable
 Keep University classes and Personal plans separate. University entries repeat weekly by default. Personal is an independent planner for weekly activities and one-time dated events; users can copy university classes into it, then edit or delete those copies without changing the University schedule. Personal items can link to existing tasks, tasks (including roadmap tasks) can be placed on the personal timetable, and activities can create linked tasks. Switch between a full week and one day, return to today, and edit or remove entries. In the one-day view, a live timer tracks the current class. Finished classes are struck through like completed tasks. When all classes for the day end, the view shifts to show the next day's schedule. The current or next class is always highlighted, updating instantly if the timetable is edited. Today's Home view highlights the current or next University class.

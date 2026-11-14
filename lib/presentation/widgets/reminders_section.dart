@@ -37,6 +37,7 @@ class RemindersSection extends StatelessWidget {
   final ReminderPlan plan;
   final DateTime? dueAt;
   final ValueChanged<ReminderPlan> onChanged;
+
   /// Called when user taps "Set Due Date" from the no-due-date banner.
   final VoidCallback? onSetDueDate;
 
@@ -68,20 +69,36 @@ class RemindersSection extends StatelessWidget {
 
   void _applyOffsets(List<ReminderOffset> offsets) {
     if (_matches(offsets, ReminderPresets.normal)) {
-      onChanged(plan.copyWith(preset: ReminderPreset.normal, offsets: ReminderPresets.normal, customOffsets: const []));
+      onChanged(plan.copyWith(
+          preset: ReminderPreset.normal,
+          offsets: ReminderPresets.normal,
+          customOffsets: const []));
     } else if (_matches(offsets, ReminderPresets.assignment)) {
-      onChanged(plan.copyWith(preset: ReminderPreset.assignment, offsets: ReminderPresets.assignment, customOffsets: const []));
+      onChanged(plan.copyWith(
+          preset: ReminderPreset.assignment,
+          offsets: ReminderPresets.assignment,
+          customOffsets: const []));
     } else if (_matches(offsets, ReminderPresets.critical)) {
-      onChanged(plan.copyWith(preset: ReminderPreset.critical, offsets: ReminderPresets.critical, customOffsets: const []));
+      onChanged(plan.copyWith(
+          preset: ReminderPreset.critical,
+          offsets: ReminderPresets.critical,
+          customOffsets: const []));
     } else {
-      onChanged(plan.copyWith(preset: ReminderPreset.custom, offsets: const [], customOffsets: offsets));
+      onChanged(plan.copyWith(
+          preset: ReminderPreset.custom,
+          offsets: const [],
+          customOffsets: offsets));
     }
   }
 
   bool _matches(List<ReminderOffset> a, List<ReminderOffset> b) {
     if (a.length != b.length) return false;
     for (final oa in a) {
-      if (!b.any((ob) => oa.days == ob.days && oa.hours == ob.hours && oa.minutes == ob.minutes && oa.atDeadline == ob.atDeadline)) {
+      if (!b.any((ob) =>
+          oa.days == ob.days &&
+          oa.hours == ob.hours &&
+          oa.minutes == ob.minutes &&
+          oa.atDeadline == ob.atDeadline)) {
         return false;
       }
     }
@@ -93,12 +110,17 @@ class RemindersSection extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _CustomReminderSheet(dueAt: dueAt, onSetDueDate: onSetDueDate),
+      builder: (ctx) =>
+          _CustomReminderSheet(dueAt: dueAt, onSetDueDate: onSetDueDate),
     );
     if (results != null && results.isNotEmpty) {
       final current = List<ReminderOffset>.from(plan.allOffsets);
       for (final r in results) {
-        final exists = current.any((c) => c.days == r.days && c.hours == r.hours && c.minutes == r.minutes && c.atDeadline == r.atDeadline);
+        final exists = current.any((c) =>
+            c.days == r.days &&
+            c.hours == r.hours &&
+            c.minutes == r.minutes &&
+            c.atDeadline == r.atDeadline);
         if (!exists) current.add(r);
       }
       _applyOffsets(current);
@@ -114,7 +136,9 @@ class RemindersSection extends StatelessWidget {
 
   Future<void> _pickDailyTime(BuildContext context) async {
     final initial = plan.dailyReminderMinutes != null
-        ? TimeOfDay(hour: plan.dailyReminderMinutes! ~/ 60, minute: plan.dailyReminderMinutes! % 60)
+        ? TimeOfDay(
+            hour: plan.dailyReminderMinutes! ~/ 60,
+            minute: plan.dailyReminderMinutes! % 60)
         : const TimeOfDay(hour: 8, minute: 0);
 
     final t = await showTimePicker(
@@ -127,42 +151,79 @@ class RemindersSection extends StatelessWidget {
     }
   }
 
+  Future<void> _pickQuietHour(
+    BuildContext context, {
+    required bool start,
+  }) async {
+    final current =
+        start ? plan.quietHoursStartMinutes : plan.quietHoursEndMinutes;
+    final initial = current == null
+        ? (start
+            ? const TimeOfDay(hour: 22, minute: 0)
+            : const TimeOfDay(hour: 7, minute: 0))
+        : TimeOfDay(hour: current ~/ 60, minute: current % 60);
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (ctx, child) => _timePickerTheme(ctx, child),
+    );
+    if (selected == null) return;
+    final minutes = selected.hour * 60 + selected.minute;
+    onChanged(start
+        ? plan.copyWith(quietHoursStartMinutes: minutes)
+        : plan.copyWith(quietHoursEndMinutes: minutes));
+  }
+
   Widget _timePickerTheme(BuildContext ctx, Widget? child) => Theme(
-    data: ThemeData.dark().copyWith(
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.action,
-        onPrimary: Colors.white,
-        surface: AppColors.surface,
-        onSurface: AppColors.textPrimary,
-        secondary: AppColors.action,
-      ),
-      timePickerTheme: TimePickerThemeData(
-        backgroundColor: AppColors.background,
-        dialBackgroundColor: AppColors.surface,
-        dialHandColor: AppColors.action,
-        dialTextColor: WidgetStateColor.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? Colors.white : AppColors.textPrimary,
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(
+            primary: AppColors.action,
+            onPrimary: Colors.white,
+            surface: AppColors.surface,
+            onSurface: AppColors.textPrimary,
+            secondary: AppColors.action,
+          ),
+          timePickerTheme: TimePickerThemeData(
+            backgroundColor: AppColors.background,
+            dialBackgroundColor: AppColors.surface,
+            dialHandColor: AppColors.action,
+            dialTextColor: WidgetStateColor.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? Colors.white
+                  : AppColors.textPrimary,
+            ),
+            hourMinuteTextColor: WidgetStateColor.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? AppColors.action
+                  : AppColors.textSecondary,
+            ),
+            hourMinuteColor: WidgetStateColor.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? AppColors.action.withValues(alpha: 0.15)
+                  : AppColors.surface,
+            ),
+            dayPeriodTextColor: WidgetStateColor.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? AppColors.action
+                  : AppColors.textSecondary,
+            ),
+            dayPeriodColor: WidgetStateColor.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? AppColors.action.withValues(alpha: 0.15)
+                  : AppColors.surface,
+            ),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            entryModeIconColor: AppColors.textSecondary,
+            cancelButtonStyle: ButtonStyle(
+                foregroundColor:
+                    WidgetStateProperty.all(AppColors.textSecondary)),
+            confirmButtonStyle: ButtonStyle(
+                foregroundColor: WidgetStateProperty.all(AppColors.action)),
+          ),
         ),
-        hourMinuteTextColor: WidgetStateColor.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? AppColors.action : AppColors.textSecondary,
-        ),
-        hourMinuteColor: WidgetStateColor.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? AppColors.action.withValues(alpha: 0.15) : AppColors.surface,
-        ),
-        dayPeriodTextColor: WidgetStateColor.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? AppColors.action : AppColors.textSecondary,
-        ),
-        dayPeriodColor: WidgetStateColor.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? AppColors.action.withValues(alpha: 0.15) : AppColors.surface,
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        entryModeIconColor: AppColors.textSecondary,
-        cancelButtonStyle: ButtonStyle(foregroundColor: WidgetStateProperty.all(AppColors.textSecondary)),
-        confirmButtonStyle: ButtonStyle(foregroundColor: WidgetStateProperty.all(AppColors.action)),
-      ),
-    ),
-    child: child!,
-  );
+        child: child!,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -188,7 +249,8 @@ class RemindersSection extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.divider.withValues(alpha: 0.5), width: 1),
+            border: Border.all(
+                color: AppColors.divider.withValues(alpha: 0.5), width: 1),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -201,20 +263,51 @@ class RemindersSection extends StatelessWidget {
                   children: [
                     const Text(
                       'Quick Presets',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: AppColors.textSecondary),
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                          color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: 10),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
-                          _PresetPill(label: 'Normal', sublabel: '1 day · deadline', selected: plan.preset == ReminderPreset.normal, onTap: () => _selectPreset(ReminderPreset.normal)),
+                          _PresetPill(
+                              label: 'Normal',
+                              sublabel: '1 day · deadline',
+                              selected: plan.preset == ReminderPreset.normal,
+                              onTap: () =>
+                                  _selectPreset(ReminderPreset.normal)),
                           const SizedBox(width: 8),
-                          _PresetPill(label: 'Assignment', sublabel: '2d · 1d · 3h · 30m', selected: plan.preset == ReminderPreset.assignment, onTap: () => _selectPreset(ReminderPreset.assignment)),
+                          _PresetPill(
+                              label: 'Assignment',
+                              sublabel: '2d · 1d · 3h · 30m',
+                              selected:
+                                  plan.preset == ReminderPreset.assignment,
+                              onTap: () =>
+                                  _selectPreset(ReminderPreset.assignment)),
                           const SizedBox(width: 8),
-                          _PresetPill(label: 'Critical', sublabel: '3d · 2d · 1d · 3h', selected: plan.preset == ReminderPreset.critical, onTap: () => _selectPreset(ReminderPreset.critical)),
+                          _PresetPill(
+                              label: 'Critical',
+                              sublabel: '3d · 2d · 1d · 3h',
+                              selected: plan.preset == ReminderPreset.critical,
+                              onTap: () =>
+                                  _selectPreset(ReminderPreset.critical)),
                           const SizedBox(width: 8),
-                          _PresetPill(label: 'Custom', sublabel: 'Manual offsets', selected: plan.preset == ReminderPreset.custom, onTap: () => _selectPreset(ReminderPreset.custom)),
+                          _PresetPill(
+                              label: 'Daily',
+                              sublabel: 'Every day',
+                              selected: plan.preset == ReminderPreset.daily,
+                              onTap: () => _selectPreset(ReminderPreset.daily)),
+                          const SizedBox(width: 8),
+                          _PresetPill(
+                              label: 'Custom',
+                              sublabel: 'Manual offsets',
+                              selected: plan.preset == ReminderPreset.custom,
+                              onTap: () =>
+                                  _selectPreset(ReminderPreset.custom)),
                         ],
                       ),
                     ),
@@ -231,14 +324,22 @@ class RemindersSection extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Active Reminders', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: AppColors.textSecondary)),
+                    const Text('Active Reminders',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                            color: AppColors.textSecondary)),
                     const SizedBox(height: 10),
                     if (_activeOffsets.isEmpty)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
                           'No reminders set. Add some below.',
-                          style: TextStyle(fontSize: 13, color: AppColors.textSecondary.withValues(alpha: 0.6)),
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary
+                                  .withValues(alpha: 0.6)),
                         ),
                       )
                     else
@@ -246,8 +347,12 @@ class RemindersSection extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 8,
                         children: _activeOffsets.map((o) {
-                          final fromPreset = ReminderPresets.forPreset(plan.preset).any(
-                              (p) => p.days == o.days && p.hours == o.hours && p.minutes == o.minutes && p.atDeadline == o.atDeadline);
+                          final fromPreset =
+                              ReminderPresets.forPreset(plan.preset).any((p) =>
+                                  p.days == o.days &&
+                                  p.hours == o.hours &&
+                                  p.minutes == o.minutes &&
+                                  p.atDeadline == o.atDeadline);
                           return _ActiveChip(
                             label: o.label,
                             fromPreset: fromPreset,
@@ -268,7 +373,12 @@ class RemindersSection extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Add More', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: AppColors.textSecondary)),
+                    const Text('Add More',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                            color: AppColors.textSecondary)),
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
@@ -276,7 +386,10 @@ class RemindersSection extends StatelessWidget {
                       children: [
                         ..._quickOffsets.map((o) {
                           final sel = _isSelected(o);
-                          return _QuickChip(label: o.label, selected: sel, onTap: () => _toggleOffset(o));
+                          return _QuickChip(
+                              label: o.label,
+                              selected: sel,
+                              onTap: () => _toggleOffset(o));
                         }),
                         _QuickChip(
                           label: 'Custom...',
@@ -304,22 +417,31 @@ class RemindersSection extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Daily Reminder', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                              Text('Daily Reminder',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary)),
                               SizedBox(height: 2),
-                              Text('Fires every day at a fixed time', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                              Text('Fires every day at a fixed time',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary)),
                             ],
                           ),
                         ),
                         Switch(
                           value: hasDailyReminder,
                           activeColor: AppColors.action,
-                          inactiveTrackColor: AppColors.divider.withValues(alpha: 0.8),
+                          inactiveTrackColor:
+                              AppColors.divider.withValues(alpha: 0.8),
                           inactiveThumbColor: AppColors.textSecondary,
                           onChanged: (val) {
                             if (val) {
                               _pickDailyTime(context);
                             } else {
-                              onChanged(plan.copyWith(clearDailyReminder: true));
+                              onChanged(
+                                  plan.copyWith(clearDailyReminder: true));
                             }
                           },
                         ),
@@ -330,22 +452,31 @@ class RemindersSection extends StatelessWidget {
                       GestureDetector(
                         onTap: () => _pickDailyTime(context),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
                             color: AppColors.action.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.action.withValues(alpha: 0.25)),
+                            border: Border.all(
+                                color:
+                                    AppColors.action.withValues(alpha: 0.25)),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.alarm_rounded, size: 18, color: AppColors.action),
+                              const Icon(Icons.alarm_rounded,
+                                  size: 18, color: AppColors.action),
                               const SizedBox(width: 10),
                               Text(
                                 'Every day at ${_fmtTime(plan.dailyReminderMinutes!)}',
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.action),
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.action),
                               ),
                               const Spacer(),
-                              const Text('Change', style: TextStyle(fontSize: 12, color: AppColors.action)),
+                              const Text('Change',
+                                  style: TextStyle(
+                                      fontSize: 12, color: AppColors.action)),
                             ],
                           ),
                         ),
@@ -360,29 +491,56 @@ class RemindersSection extends StatelessWidget {
               // ── Constant reminder toggle ─────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                child: Row(
+                child: Column(
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Constant Reminder', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Keeps pinging every 15 min until you complete the task',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary.withValues(alpha: 0.8)),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Constant Reminder',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary)),
+                              SizedBox(height: 2),
+                              Text('Keeps pinging until you complete the task',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary)),
+                            ],
                           ),
-                        ],
+                        ),
+                        Switch(
+                          value: plan.constantReminder,
+                          activeColor: AppColors.alert,
+                          onChanged: (val) =>
+                              onChanged(plan.copyWith(constantReminder: val)),
+                        ),
+                      ],
+                    ),
+                    if (plan.constantReminder)
+                      DropdownButtonFormField<int>(
+                        key: ValueKey(
+                            'constant-interval-${plan.constantIntervalMinutes}'),
+                        value: plan.constantIntervalMinutes,
+                        decoration:
+                            const InputDecoration(labelText: 'Repeat interval'),
+                        items: const [5, 10, 15, 30, 60]
+                            .map((minutes) => DropdownMenuItem(
+                                  value: minutes,
+                                  child: Text('$minutes minutes'),
+                                ))
+                            .toList(),
+                        onChanged: (minutes) {
+                          if (minutes != null) {
+                            onChanged(plan.copyWith(
+                              constantIntervalMinutes: minutes,
+                            ));
+                          }
+                        },
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Switch(
-                      value: plan.constantReminder,
-                      activeColor: AppColors.alert,
-                      inactiveTrackColor: AppColors.divider.withValues(alpha: 0.8),
-                      inactiveThumbColor: AppColors.textSecondary,
-                      onChanged: (val) => onChanged(plan.copyWith(constantReminder: val)),
-                    ),
                   ],
                 ),
               ),
@@ -398,11 +556,18 @@ class RemindersSection extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Flexible Reminder', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                          const Text('Flexible Reminder',
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary)),
                           const SizedBox(height: 2),
                           Text(
                             'Delays notifications until your current class finishes so you aren\'t disturbed',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary.withValues(alpha: 0.8)),
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary
+                                    .withValues(alpha: 0.8)),
                           ),
                         ],
                       ),
@@ -411,9 +576,11 @@ class RemindersSection extends StatelessWidget {
                     Switch(
                       value: plan.flexibleReminder,
                       activeColor: AppColors.action,
-                      inactiveTrackColor: AppColors.divider.withValues(alpha: 0.8),
+                      inactiveTrackColor:
+                          AppColors.divider.withValues(alpha: 0.8),
                       inactiveThumbColor: AppColors.textSecondary,
-                      onChanged: (val) => onChanged(plan.copyWith(flexibleReminder: val)),
+                      onChanged: (val) =>
+                          onChanged(plan.copyWith(flexibleReminder: val)),
                     ),
                   ],
                 ),
@@ -421,49 +588,199 @@ class RemindersSection extends StatelessWidget {
 
               _Divider(),
 
-              // ── Ring as Alarm toggle ───────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                child: Column(
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Ring as Alarm', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Reminders will ring continuously at full volume until you dismiss them',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary.withValues(alpha: 0.8)),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Quiet hours',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary)),
+                              SizedBox(height: 2),
+                              Text(
+                                  'Pause constant reminders during a daily window',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary)),
+                            ],
                           ),
-                          if (plan.ringAsAlarm)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(Icons.info_outline, size: 14, color: AppColors.attention.withValues(alpha: 0.9)),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'If it doesn\'t ring, check Settings → Apps → Todow → Alarms & Reminders (requires explicit permission on Android 12+).',
-                                      style: TextStyle(fontSize: 11.5, color: AppColors.attention.withValues(alpha: 0.9), height: 1.3),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                        ),
+                        Switch(
+                          value: plan.quietHoursStartMinutes != null &&
+                              plan.quietHoursEndMinutes != null,
+                          activeColor: AppColors.action,
+                          onChanged: (enabled) {
+                            onChanged(enabled
+                                ? plan.copyWith(
+                                    quietHoursStartMinutes: 22 * 60,
+                                    quietHoursEndMinutes: 7 * 60,
+                                  )
+                                : plan.copyWith(clearQuietHours: true));
+                          },
+                        ),
+                      ],
+                    ),
+                    if (plan.quietHoursStartMinutes != null &&
+                        plan.quietHoursEndMinutes != null) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () =>
+                                  _pickQuietHour(context, start: true),
+                              child: Text(
+                                  'From ${_fmtTime(plan.quietHoursStartMinutes!)}'),
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () =>
+                                  _pickQuietHour(context, start: false),
+                              child: Text(
+                                  'Until ${_fmtTime(plan.quietHoursEndMinutes!)}'),
+                            ),
+                          ),
                         ],
                       ),
+                    ],
+                  ],
+                ),
+              ),
+
+              _Divider(),
+
+              // ── Ring as Alarm toggle & Sound picker ────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Ring as Alarm',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary)),
+                              const SizedBox(height: 2),
+                              Text(
+                                'When on, this reminder uses the clock-style alarm. When off, it is a normal notification.',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary
+                                        .withValues(alpha: 0.8)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Switch(
+                          value: plan.ringAsAlarm,
+                          activeColor: AppColors.alert,
+                          inactiveTrackColor:
+                              AppColors.divider.withValues(alpha: 0.8),
+                          inactiveThumbColor: AppColors.textSecondary,
+                          onChanged: (val) => onChanged(
+                            plan.copyWith(
+                              ringAsAlarm: val,
+                              alertBehavior: val
+                                  ? ReminderAlertBehavior.soundAndVibration
+                                  : ReminderAlertBehavior.beep,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Switch(
-                      value: plan.ringAsAlarm,
-                      activeColor: AppColors.alert,
-                      inactiveTrackColor: AppColors.divider.withValues(alpha: 0.8),
-                      inactiveThumbColor: AppColors.textSecondary,
-                      onChanged: (val) => onChanged(plan.copyWith(ringAsAlarm: val)),
-                    ),
+                    if (plan.ringAsAlarm) ...[
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Alarm Ringtone',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.4,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.divider),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            key: ValueKey('alarm-sound-${plan.alarmSoundId}'),
+                            value: plan.alarmSoundId,
+                            isExpanded: true,
+                            icon: const Icon(Icons.arrow_drop_down_rounded,
+                                color: AppColors.textSecondary),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'alarm_sound',
+                                child: Text('Default Alarm (Dual tone)'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'alarm_classic',
+                                child: Text('Classic Digital (Beep-beep)'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'alarm_gentle',
+                                child: Text('Gentle Chime (Soft arpeggio)'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'alarm_urgent',
+                                child: Text('Urgent Radar (Rapid siren pulse)'),
+                              ),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                onChanged(plan.copyWith(alarmSoundId: val));
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.info_outline,
+                                size: 14,
+                                color:
+                                    AppColors.attention.withValues(alpha: 0.9)),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'If it doesn\'t ring, check Settings → Apps → Todow → Alarms & Reminders (requires explicit permission on Android 12+).',
+                                style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.attention
+                                        .withValues(alpha: 0.9),
+                                    height: 1.3),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -504,7 +821,9 @@ class _PresetPill extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: selected ? AppColors.action : AppColors.background,
-            border: selected ? null : Border.all(color: AppColors.divider, width: 1),
+            border: selected
+                ? null
+                : Border.all(color: AppColors.divider, width: 1),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -512,12 +831,20 @@ class _PresetPill extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? Colors.white : AppColors.textPrimary),
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? Colors.white : AppColors.textPrimary),
               ),
               const SizedBox(height: 2),
               Text(
                 sublabel,
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: selected ? Colors.white.withValues(alpha: 0.7) : AppColors.textSecondary.withValues(alpha: 0.7)),
+                style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: selected
+                        ? Colors.white.withValues(alpha: 0.7)
+                        : AppColors.textSecondary.withValues(alpha: 0.7)),
               ),
             ],
           ),
@@ -551,7 +878,11 @@ class _QuickChip extends StatelessWidget {
                     ? AppColors.decorNavy.withValues(alpha: 0.08)
                     : AppColors.background,
             border: Border.all(
-              color: selected ? AppColors.action : isSpecial ? AppColors.decorNavy.withValues(alpha: 0.4) : AppColors.divider,
+              color: selected
+                  ? AppColors.action
+                  : isSpecial
+                      ? AppColors.decorNavy.withValues(alpha: 0.4)
+                      : AppColors.divider,
               width: 1.5,
             ),
             borderRadius: BorderRadius.circular(20),
@@ -561,7 +892,11 @@ class _QuickChip extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: selected ? AppColors.action : isSpecial ? AppColors.decorNavy : AppColors.textSecondary,
+              color: selected
+                  ? AppColors.action
+                  : isSpecial
+                      ? AppColors.decorNavy
+                      : AppColors.textSecondary,
             ),
           ),
         ),
@@ -583,9 +918,13 @@ class _ActiveChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.only(left: 12, right: 6, top: 6, bottom: 6),
         decoration: BoxDecoration(
-          color: fromPreset ? AppColors.attention.withValues(alpha: 0.1) : AppColors.action.withValues(alpha: 0.1),
+          color: fromPreset
+              ? AppColors.attention.withValues(alpha: 0.1)
+              : AppColors.action.withValues(alpha: 0.1),
           border: Border.all(
-            color: fromPreset ? AppColors.attention.withValues(alpha: 0.4) : AppColors.action.withValues(alpha: 0.4),
+            color: fromPreset
+                ? AppColors.attention.withValues(alpha: 0.4)
+                : AppColors.action.withValues(alpha: 0.4),
             width: 1,
           ),
           borderRadius: BorderRadius.circular(20),
@@ -595,12 +934,17 @@ class _ActiveChip extends StatelessWidget {
           children: [
             Text(
               label,
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: fromPreset ? AppColors.attention : AppColors.action),
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: fromPreset ? AppColors.attention : AppColors.action),
             ),
             const SizedBox(width: 4),
             GestureDetector(
               onTap: onRemove,
-              child: Icon(Icons.close_rounded, size: 14, color: fromPreset ? AppColors.attention : AppColors.action),
+              child: Icon(Icons.close_rounded,
+                  size: 14,
+                  color: fromPreset ? AppColors.attention : AppColors.action),
             ),
           ],
         ),
@@ -645,8 +989,14 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
   ReminderOffset _buildOffset() {
     if (_isAbsolute && widget.dueAt != null) {
       final diff = widget.dueAt!.difference(_selectedAbsolute);
-      if (diff.isNegative) return const ReminderOffset(days: 0, hours: 0, minutes: 0, atDeadline: true);
-      return ReminderOffset(days: diff.inDays, hours: diff.inHours.remainder(24), minutes: diff.inMinutes.remainder(60));
+      if (diff.isNegative) {
+        return const ReminderOffset(
+            days: 0, hours: 0, minutes: 0, atDeadline: true);
+      }
+      return ReminderOffset(
+          days: diff.inDays,
+          hours: diff.inHours.remainder(24),
+          minutes: diff.inMinutes.remainder(60));
     }
     return ReminderOffset(
       days: _days,
@@ -658,12 +1008,18 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
 
   void _addThis() {
     final o = _buildOffset();
-    final exists = _added.any((a) => a.days == o.days && a.hours == o.hours && a.minutes == o.minutes && a.atDeadline == o.atDeadline);
+    final exists = _added.any((a) =>
+        a.days == o.days &&
+        a.hours == o.hours &&
+        a.minutes == o.minutes &&
+        a.atDeadline == o.atDeadline);
     if (!exists) {
       setState(() {
         _added.add(o);
         // Reset relative for next input
-        _days = 0; _hours = 0; _mins = 15;
+        _days = 0;
+        _hours = 0;
+        _mins = 15;
       });
     }
   }
@@ -674,7 +1030,9 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final canAdd = _isAbsolute ? widget.dueAt != null : (_days > 0 || _hours > 0 || _mins > 0);
+    final canAdd = _isAbsolute
+        ? widget.dueAt != null
+        : (_days > 0 || _hours > 0 || _mins > 0);
 
     return Container(
       decoration: const BoxDecoration(
@@ -682,7 +1040,9 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       padding: EdgeInsets.only(
-        left: 24, right: 24, top: 16,
+        left: 24,
+        right: 24,
+        top: 16,
         bottom: MediaQuery.of(context).padding.bottom + 24,
       ),
       child: Column(
@@ -692,7 +1052,8 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
           // Handle
           Center(
             child: Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
                 color: AppColors.divider.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(10),
@@ -704,12 +1065,20 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
           Row(
             children: [
               const Expanded(
-                child: Text('Add Reminder', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary, letterSpacing: -0.5)),
+                child: Text('Add Reminder',
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.5)),
               ),
               if (_added.isNotEmpty)
                 TextButton(
                   onPressed: _done,
-                  child: Text('Done (${_added.length})', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.action)),
+                  child: Text('Done (${_added.length})',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.action)),
                 ),
             ],
           ),
@@ -718,11 +1087,19 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
           // Mode toggle
           Container(
             padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16)),
+            decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(16)),
             child: Row(
               children: [
-                _Tab(label: 'Relative', selected: !_isAbsolute, onTap: () => setState(() => _isAbsolute = false)),
-                _Tab(label: 'Exact Date & Time', selected: _isAbsolute, onTap: () => setState(() => _isAbsolute = true)),
+                _Tab(
+                    label: 'Relative',
+                    selected: !_isAbsolute,
+                    onTap: () => setState(() => _isAbsolute = false)),
+                _Tab(
+                    label: 'Exact Date & Time',
+                    selected: _isAbsolute,
+                    onTap: () => setState(() => _isAbsolute = true)),
               ],
             ),
           ),
@@ -731,7 +1108,9 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
           // Content
           AnimatedCrossFade(
             duration: const Duration(milliseconds: 200),
-            crossFadeState: _isAbsolute ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            crossFadeState: _isAbsolute
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
             firstChild: _buildRelativePicker(),
             secondChild: _buildAbsolutePicker(),
           ),
@@ -740,15 +1119,22 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
 
           // Accumulated list
           if (_added.isNotEmpty) ...[
-            const Text('Will add:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: AppColors.textSecondary)),
+            const Text('Will add:',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                    color: AppColors.textSecondary)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: List.generate(_added.length, (i) => _AddedChip(
-                label: _added[i].label,
-                onRemove: () => _removeAdded(i),
-              )),
+              children: List.generate(
+                  _added.length,
+                  (i) => _AddedChip(
+                        label: _added[i].label,
+                        onRemove: () => _removeAdded(i),
+                      )),
             ),
             const SizedBox(height: 16),
           ],
@@ -761,10 +1147,17 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
                   onPressed: canAdd ? _addThis : null,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: BorderSide(color: canAdd ? AppColors.action : AppColors.divider),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    side: BorderSide(
+                        color: canAdd ? AppColors.action : AppColors.divider),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: Text('+ Add This', style: TextStyle(fontWeight: FontWeight.w600, color: canAdd ? AppColors.action : AppColors.textSecondary)),
+                  child: Text('+ Add This',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: canAdd
+                              ? AppColors.action
+                              : AppColors.textSecondary)),
                 ),
               ),
               if (_added.isNotEmpty) ...[
@@ -776,10 +1169,13 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
                       backgroundColor: AppColors.action,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                       elevation: 0,
                     ),
-                    child: Text('Save ${_added.length} Reminder${_added.length == 1 ? '' : 's'}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                    child: Text(
+                        'Save ${_added.length} Reminder${_added.length == 1 ? '' : 's'}',
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],
@@ -793,11 +1189,27 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
   Widget _buildRelativePicker() {
     return Column(
       children: [
-        _Stepper(label: 'Days before', value: _days, min: 0, max: 30, onChanged: (v) => setState(() => _days = v)),
+        _Stepper(
+            label: 'Days before',
+            value: _days,
+            min: 0,
+            max: 30,
+            onChanged: (v) => setState(() => _days = v)),
         const SizedBox(height: 12),
-        _Stepper(label: 'Hours before', value: _hours, min: 0, max: 23, onChanged: (v) => setState(() => _hours = v)),
+        _Stepper(
+            label: 'Hours before',
+            value: _hours,
+            min: 0,
+            max: 23,
+            onChanged: (v) => setState(() => _hours = v)),
         const SizedBox(height: 12),
-        _Stepper(label: 'Minutes before', value: _mins, min: 0, max: 55, step: 5, onChanged: (v) => setState(() => _mins = v)),
+        _Stepper(
+            label: 'Minutes before',
+            value: _mins,
+            min: 0,
+            max: 55,
+            step: 5,
+            onChanged: (v) => setState(() => _mins = v)),
       ],
     );
   }
@@ -814,7 +1226,8 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
           decoration: BoxDecoration(
             color: AppColors.attention.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.attention.withValues(alpha: 0.25)),
+            border:
+                Border.all(color: AppColors.attention.withValues(alpha: 0.25)),
           ),
           child: Row(
             children: [
@@ -824,20 +1237,28 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
                   color: AppColors.attention.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.calendar_today_rounded, color: AppColors.attention, size: 18),
+                child: const Icon(Icons.calendar_today_rounded,
+                    color: AppColors.attention, size: 18),
               ),
               const SizedBox(width: 12),
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('No due date set', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                    Text('No due date set',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary)),
                     SizedBox(height: 2),
-                    Text('Tap to set a due date first', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    Text('Tap to set a due date first',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.attention),
+              const Icon(Icons.arrow_forward_ios_rounded,
+                  size: 14, color: AppColors.attention),
             ],
           ),
         ),
@@ -850,17 +1271,21 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
           onTap: () async {
             final d = await showDatePicker(
               context: context,
-              initialDate: _selectedAbsolute.isBefore(DateTime.now()) ? DateTime.now() : _selectedAbsolute,
+              initialDate: _selectedAbsolute.isBefore(DateTime.now())
+                  ? DateTime.now()
+                  : _selectedAbsolute,
               firstDate: DateTime.now(),
               lastDate: widget.dueAt!,
             );
             if (d != null) {
-              setState(() => _selectedAbsolute = DateTime(d.year, d.month, d.day, _selectedAbsolute.hour, _selectedAbsolute.minute));
+              setState(() => _selectedAbsolute = DateTime(d.year, d.month,
+                  d.day, _selectedAbsolute.hour, _selectedAbsolute.minute));
             }
           },
           child: _PickerRow(
             label: 'Date',
-            value: '${_selectedAbsolute.day}/${_selectedAbsolute.month}/${_selectedAbsolute.year}',
+            value:
+                '${_selectedAbsolute.day}/${_selectedAbsolute.month}/${_selectedAbsolute.year}',
             icon: Icons.calendar_today_rounded,
           ),
         ),
@@ -873,7 +1298,12 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
               builder: (ctx, child) => _timePickerTheme(ctx, child),
             );
             if (t != null) {
-              setState(() => _selectedAbsolute = DateTime(_selectedAbsolute.year, _selectedAbsolute.month, _selectedAbsolute.day, t.hour, t.minute));
+              setState(() => _selectedAbsolute = DateTime(
+                  _selectedAbsolute.year,
+                  _selectedAbsolute.month,
+                  _selectedAbsolute.day,
+                  t.hour,
+                  t.minute));
             }
           },
           child: _PickerRow(
@@ -887,29 +1317,31 @@ class _CustomReminderSheetState extends State<_CustomReminderSheet> {
   }
 
   Widget _timePickerTheme(BuildContext ctx, Widget? child) => Theme(
-    data: ThemeData.dark().copyWith(
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.action,
-        onPrimary: Colors.white,
-        surface: AppColors.surface,
-        onSurface: AppColors.textPrimary,
-      ),
-      timePickerTheme: TimePickerThemeData(
-        backgroundColor: AppColors.background,
-        dialBackgroundColor: AppColors.surface,
-        dialHandColor: AppColors.action,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      ),
-    ),
-    child: child!,
-  );
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(
+            primary: AppColors.action,
+            onPrimary: Colors.white,
+            surface: AppColors.surface,
+            onSurface: AppColors.textPrimary,
+          ),
+          timePickerTheme: TimePickerThemeData(
+            backgroundColor: AppColors.background,
+            dialBackgroundColor: AppColors.surface,
+            dialHandColor: AppColors.action,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          ),
+        ),
+        child: child!,
+      );
 }
 
 class _Tab extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _Tab({required this.label, required this.selected, required this.onTap});
+  const _Tab(
+      {required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) => Expanded(
@@ -925,7 +1357,10 @@ class _Tab extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               label,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: selected ? Colors.white : AppColors.textSecondary),
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: selected ? Colors.white : AppColors.textSecondary),
             ),
           ),
         ),
@@ -948,9 +1383,16 @@ class _AddedChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.action)),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.action)),
             const SizedBox(width: 4),
-            GestureDetector(onTap: onRemove, child: const Icon(Icons.close_rounded, size: 13, color: AppColors.action)),
+            GestureDetector(
+                onTap: onRemove,
+                child: const Icon(Icons.close_rounded,
+                    size: 13, color: AppColors.action)),
           ],
         ),
       );
@@ -961,7 +1403,8 @@ class _PickerRow extends StatelessWidget {
   final String value;
   final IconData icon;
 
-  const _PickerRow({required this.label, required this.value, required this.icon});
+  const _PickerRow(
+      {required this.label, required this.value, required this.icon});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -974,10 +1417,20 @@ class _PickerRow extends StatelessWidget {
           children: [
             Icon(icon, color: AppColors.textSecondary, size: 18),
             const SizedBox(width: 12),
-            Expanded(child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textPrimary))),
-            Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.action)),
+            Expanded(
+                child: Text(label,
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary))),
+            Text(value,
+                style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.action)),
             const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textSecondary),
+            const Icon(Icons.chevron_right_rounded,
+                size: 18, color: AppColors.textSecondary),
           ],
         ),
       );
@@ -991,7 +1444,13 @@ class _Stepper extends StatelessWidget {
   final int step;
   final ValueChanged<int> onChanged;
 
-  const _Stepper({required this.label, required this.value, required this.min, required this.max, this.step = 1, required this.onChanged});
+  const _Stepper(
+      {required this.label,
+      required this.value,
+      required this.min,
+      required this.max,
+      this.step = 1,
+      required this.onChanged});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1002,13 +1461,31 @@ class _Stepper extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Expanded(child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary))),
-            _StepBtn(icon: Icons.remove_rounded, onTap: value > min ? () => onChanged((value - step).clamp(min, max)) : null),
+            Expanded(
+                child: Text(label,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary))),
+            _StepBtn(
+                icon: Icons.remove_rounded,
+                onTap: value > min
+                    ? () => onChanged((value - step).clamp(min, max))
+                    : null),
             SizedBox(
               width: 48,
-              child: Text('$value', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              child: Text('$value',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
             ),
-            _StepBtn(icon: Icons.add_rounded, onTap: value < max ? () => onChanged((value + step).clamp(min, max)) : null),
+            _StepBtn(
+                icon: Icons.add_rounded,
+                onTap: value < max
+                    ? () => onChanged((value + step).clamp(min, max))
+                    : null),
           ],
         ),
       );
@@ -1028,10 +1505,16 @@ class _StepBtn extends StatelessWidget {
         duration: const Duration(milliseconds: 100),
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: active ? AppColors.action.withValues(alpha: 0.1) : AppColors.divider.withValues(alpha: 0.2),
+          color: active
+              ? AppColors.action.withValues(alpha: 0.1)
+              : AppColors.divider.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, size: 18, color: active ? AppColors.action : AppColors.textSecondary.withValues(alpha: 0.4)),
+        child: Icon(icon,
+            size: 18,
+            color: active
+                ? AppColors.action
+                : AppColors.textSecondary.withValues(alpha: 0.4)),
       ),
     );
   }

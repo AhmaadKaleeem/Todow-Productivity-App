@@ -12,12 +12,21 @@ String relativeDueLabel(DateTime? due, {DateTime? now}) {
   if (diff == 0) {
     if (due.hour != 0 || due.minute != 0 || due.second != 0) {
       final h = due.hour % 12 == 0 ? 12 : due.hour % 12;
+      final m = due.minute != 0 ? ':${due.minute.toString().padLeft(2, '0')}' : '';
       final ampm = due.hour >= 12 ? 'PM' : 'AM';
-      return 'Today · $h $ampm';
+      return 'Today · $h$m $ampm';
     }
     return 'Today';
   }
-  if (diff == 1) return 'Tomorrow';
+  if (diff == 1) {
+    if (due.hour != 0 || due.minute != 0 || due.second != 0) {
+      final h = due.hour % 12 == 0 ? 12 : due.hour % 12;
+      final m = due.minute != 0 ? ':${due.minute.toString().padLeft(2, '0')}' : '';
+      final ampm = due.hour >= 12 ? 'PM' : 'AM';
+      return 'Tomorrow · $h$m $ampm';
+    }
+    return 'Tomorrow';
+  }
   if (diff == -1) return 'Yesterday';
   if (diff <= 7) return _weekdays[dueDay.weekday - 1];
   if (diff <= 365) return '${_months[dueDay.month - 1]} ${dueDay.day}';

@@ -887,54 +887,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
-          Positioned(
-            bottom: 32,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: const [_softShadow],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const _NavIcon(Icons.grid_view_rounded, true),
-                      const SizedBox(width: 28),
-                      const _NavIcon(Icons.check_circle_outline_rounded, false),
-                      const SizedBox(width: 28),
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                                builder: (_) => const TaskEditorScreen())),
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: const BoxDecoration(
-                              color: AppColors.action, shape: BoxShape.circle),
-                          child: const Icon(Icons.add_rounded,
-                              color: Colors.white, size: 26),
-                        ),
-                      ),
-                      const SizedBox(width: 28),
-                      const _NavIcon(Icons.calendar_today_outlined, false),
-                      const SizedBox(width: 28),
-                      const _NavIcon(Icons.person_outline_rounded, false),
-                    ],
-                  ),
-                ).animate().slideY(
-                    begin: 1.5,
-                    curve: Curves.easeOutBack,
-                    duration: 800.ms,
-                    delay: 500.ms),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -1640,18 +1592,6 @@ class _EmptyTasksHint extends StatelessWidget {
           ),
         ),
       );
-}
-
-// ──────────────────────────────── NAV ICON ───────────────────────────────────
-
-class _NavIcon extends StatelessWidget {
-  final IconData icon;
-  final bool selected;
-  const _NavIcon(this.icon, this.selected);
-  @override
-  Widget build(BuildContext context) => Icon(icon,
-      size: 24,
-      color: selected ? AppColors.textPrimary : AppColors.textSecondary);
 }
 
 // ─────────────────────────── SWIPE ACTION TILE ───────────────────────────────

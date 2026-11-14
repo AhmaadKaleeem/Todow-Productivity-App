@@ -86,7 +86,11 @@ class TaskNotifier extends AsyncNotifier<List<Task>> {
       sortOrder: actualSortOrder,
     );
     final saved = await ref.read(taskRepositoryProvider).create(task);
-    await ref.read(reminderSchedulerProvider).syncTaskReminders(saved);
+    try {
+      await ref.read(reminderSchedulerProvider).syncTaskReminders(saved);
+    } catch (e, st) {
+      debugPrint('[ERR-TASK-CREATE] syncTaskReminders failed: $e\n$st');
+    }
     
     // Optimistic update
     state = AsyncValue.data([...(state.valueOrNull ?? []), saved]);
@@ -102,7 +106,11 @@ class TaskNotifier extends AsyncNotifier<List<Task>> {
     }
     final updated = task.copyWith(updatedAt: DateTime.now());
     await ref.read(taskRepositoryProvider).update(updated);
-    await ref.read(reminderSchedulerProvider).syncTaskReminders(updated);
+    try {
+      await ref.read(reminderSchedulerProvider).syncTaskReminders(updated);
+    } catch (e, st) {
+      debugPrint('[ERR-TASK-UPDATE] syncTaskReminders failed: $e\n$st');
+    }
     
     // Optimistic update
     final currentTasks = state.valueOrNull ?? [];
@@ -135,7 +143,11 @@ class TaskNotifier extends AsyncNotifier<List<Task>> {
     state = AsyncValue.data(newTasks);
 
     await ref.read(taskRepositoryProvider).update(updated);
-    await ref.read(reminderSchedulerProvider).cancelTaskReminders(id);
+    try {
+      await ref.read(reminderSchedulerProvider).cancelTaskReminders(id);
+    } catch (e, st) {
+      debugPrint('[ERR-TASK-COMPLETE] cancelTaskReminders failed: $e\n$st');
+    }
   }
 
   Future<void> reopenTask(String id) async {

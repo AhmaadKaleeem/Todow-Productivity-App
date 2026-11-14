@@ -16,14 +16,39 @@ abstract final class ReminderCalculator {
     DateTime? now,
     List<TimetableEntry> timetable = const [],
   }) {
-    final dueAt = task.dueAt;
-    if (dueAt == null || task.isCompleted || task.isArchived) {
+    if (task.isCompleted || task.isArchived) {
       return const [];
     }
 
     final reference = now ?? DateTime.now();
     final future = <ScheduledReminder>[];
     final past   = <ScheduledReminder>[];
+
+    final dailyMinutes = task.reminderPlan.dailyReminderMinutes;
+    if (dailyMinutes != null) {
+      var scheduledAt = DateTime(
+        reference.year,
+        reference.month,
+        reference.day,
+        dailyMinutes ~/ 60,
+        dailyMinutes % 60,
+      );
+      if (!scheduledAt.isAfter(reference)) {
+        scheduledAt = scheduledAt.add(const Duration(days: 1));
+      }
+      future.add(ScheduledReminder(
+        id: '${task.id}-daily',
+        taskId: task.id,
+        scheduledAt: scheduledAt,
+        status: ReminderStatus.pending,
+        kind: ReminderKind.daily,
+        label: 'Daily reminder',
+        repeatDaily: true,
+      ));
+    }
+
+    final dueAt = task.dueAt;
+    if (dueAt == null) return future;
 
     for (final offset in task.reminderPlan.allOffsets) {
       var scheduledAt = applyOffset(dueAt, offset);

@@ -222,7 +222,7 @@ class RoadmapListScreen extends ConsumerWidget {
                     );
                   }
                   return ReorderableListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 110),
                     buildDefaultDragHandles: false,
                     onReorder: (oldIndex, newIndex) =>
                         ref.read(roadmapsProvider.notifier).reorderRoadmaps(oldIndex, newIndex),

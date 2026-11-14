@@ -109,9 +109,19 @@ class AppShellState extends ConsumerState<AppShell>
 
     return AppShellScope(
       state: this,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Listener(
+      child: PopScope(
+        canPop: _animationController.value <= 0 && _index == 0,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          if (_animationController.value > 0) {
+            _animateDrawer(false);
+          } else if (_index != 0) {
+            selectPage(0);
+          }
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: Listener(
           onPointerDown: (event) =>
               _pointerOrigins[event.pointer] = event.position,
           onPointerUp: _onPointerUp,
@@ -306,6 +316,7 @@ class AppShellState extends ConsumerState<AppShell>
                   final slide = 280.0 * _animationController.value;
                   final scale = 1.0 - (0.15 * _animationController.value);
                   final radius = _animationController.value * 32.0;
+                  final isDrawerOpen = _animationController.value > 0.5;
 
                   return Transform(
                     transform: Matrix4.identity()
@@ -316,21 +327,53 @@ class AppShellState extends ConsumerState<AppShell>
                       borderRadius: BorderRadius.circular(radius),
                       child: Container(
                         color: AppColors.background,
-                        child: IgnorePointer(
-                          ignoring: _animationController.value > 0.5,
-                          child: child,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            GestureDetector(
+                              onTap: isDrawerOpen
+                                  ? () => _animateDrawer(false)
+                                  : null,
+                              behavior: isDrawerOpen
+                                  ? HitTestBehavior.opaque
+                                  : HitTestBehavior.deferToChild,
+                              child: IgnorePointer(
+                                ignoring: isDrawerOpen,
+                                child: pages[_index],
+                              ),
+                            ),
+                            if (_index != 2)
+                              Positioned(
+                                bottom: 32,
+                                left: 0,
+                                right: 0,
+                                child: SafeArea(
+                                  child: Center(
+                                    child: IgnorePointer(
+                                      ignoring: isDrawerOpen,
+                                      child: FloatingNavBar(
+                                        currentIndex: _index,
+                                        isDrawerOpen: isDrawerOpen,
+                                        onSelect: selectPage,
+                                        onToggleDrawer: toggleDrawer,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
                   );
                 },
-                child: pages[_index],
               ),
             ],
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
@@ -501,4 +544,114 @@ class _DrawerWavePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _DrawerWavePainter oldDelegate) =>
       oldDelegate.progress != progress;
+}
+
+// ──────────────────────────────── FLOATING NAV BAR ───────────────────────────
+
+class FloatingNavBar extends StatelessWidget {
+  const FloatingNavBar({
+    required this.currentIndex,
+    required this.isDrawerOpen,
+    required this.onSelect,
+    required this.onToggleDrawer,
+    super.key,
+  });
+
+  final int currentIndex;
+  final bool isDrawerOpen;
+  final ValueChanged<int> onSelect;
+  final VoidCallback onToggleDrawer;
+
+  static const _softShadow = BoxShadow(
+    color: Color(0x0F000000),
+    blurRadius: 8,
+    offset: Offset(0, 2),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [_softShadow],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          NavIcon(
+            icon: Icons.grid_view_rounded,
+            selected: currentIndex == 0 && !isDrawerOpen,
+            onTap: () => onSelect(0),
+          ),
+          const SizedBox(width: 28),
+          NavIcon(
+            icon: Icons.check_circle_outline_rounded,
+            selected: currentIndex == 1 && !isDrawerOpen,
+            onTap: () => onSelect(1),
+          ),
+          const SizedBox(width: 28),
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const TaskEditorScreen(),
+              ),
+            ),
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: const BoxDecoration(
+                color: AppColors.action,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.add_rounded,
+                color: Colors.white,
+                size: 26,
+              ),
+            ),
+          ),
+          const SizedBox(width: 28),
+          NavIcon(
+            icon: Icons.calendar_today_outlined,
+            selected: currentIndex == 3 && !isDrawerOpen,
+            onTap: () => onSelect(3),
+          ),
+          const SizedBox(width: 28),
+          NavIcon(
+            icon: Icons.person_outline_rounded,
+            selected: isDrawerOpen,
+            onTap: onToggleDrawer,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class NavIcon extends StatelessWidget {
+  const NavIcon({
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+    super.key,
+  });
+
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Icon(
+        icon,
+        size: 24,
+        color: selected ? AppColors.textPrimary : AppColors.textSecondary,
+      ),
+    );
+  }
 }
