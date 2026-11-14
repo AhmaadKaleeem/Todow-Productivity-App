@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:todow/core/theme/app_colors.dart';
 import 'package:todow/domain/models/enums.dart';
@@ -86,7 +84,7 @@ class _FocusActivitySceneState extends State<FocusActivityScene>
                   painter: _FieldDeskPainter(
                     preset: widget.preset,
                     progress: widget.progress.clamp(0, 1),
-                    time: _ambientController.value,
+                    time: widget.progress.clamp(0, 1),
                     isRunning: widget.isRunning,
                   ),
                 ),
@@ -428,8 +426,7 @@ class _FieldDeskPainter extends CustomPainter {
     }
   }
 
-  double _phase() =>
-      isRunning ? (0.5 + 0.5 * math.sin(time * math.pi * 2)) : 0.5;
+  double _phase() => isRunning ? progress : 0.5;
 
   @override
   bool shouldRepaint(covariant _FieldDeskPainter oldDelegate) =>

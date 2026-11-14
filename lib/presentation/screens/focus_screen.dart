@@ -1172,7 +1172,6 @@ class _ActiveFocusViewState extends State<_ActiveFocusView>
     const textPrimaryColor = AppColors.textPrimary;
     const textSecondaryColor = AppColors.textSecondary;
     final isCompact = MediaQuery.sizeOf(context).height < 700;
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -1189,7 +1188,8 @@ class _ActiveFocusViewState extends State<_ActiveFocusView>
                   painter: _FocusEnvironmentPainter(
                     preset: preset,
                     progress: progress,
-                    time: reduceMotion ? 0.5 : _loopController.value,
+                    time: (progress + (_loopController.value * 0.02))
+                        .clamp(0.0, 1.0),
                     isRunning: isRunning,
                     isEndingSoon: isEndingSoon,
                   ),
