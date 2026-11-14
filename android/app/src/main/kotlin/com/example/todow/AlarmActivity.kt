@@ -98,7 +98,7 @@ class AlarmActivity : Activity() {
             gravity = Gravity.CENTER_HORIZONTAL
             setBackgroundColor(cream)
             setPadding(dp(16f), dp(if (isWide) 20f else 16f), dp(16f), dp(24f))
-            layoutParams = ScrollView.LayoutParams(contentWidth, ViewGroup.LayoutParams.MATCH_PARENT)
+            layoutParams = ViewGroup.LayoutParams(contentWidth, ViewGroup.LayoutParams.MATCH_PARENT)
         }
 
         val header = LinearLayout(this).apply {
@@ -195,7 +195,7 @@ class AlarmActivity : Activity() {
             typeface = Typeface.DEFAULT_BOLD
             isAllCaps = false
             minHeight = dp(54f)
-            background = background(0xFFFFF3D0, 16f, amber)
+            background = background(Color.parseColor("#FFF3D0"), 16f, amber)
             setOnClickListener {
                 sendBroadcast(Intent(this@AlarmActivity, AlarmReceiver::class.java).apply {
                     action = AlarmReceiver.ACTION_SNOOZE
