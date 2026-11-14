@@ -1167,18 +1167,10 @@ class _ActiveFocusViewState extends State<_ActiveFocusView>
             widget.remaining > Duration.zero) ||
         progress >= 0.88;
     final preset = widget.session.preset;
-    final isCoding = preset == FocusPreset.coding;
-    final isFlow = preset == FocusPreset.flow;
-    final isDark = isCoding || isFlow;
     final accent = _presetAccentColor(preset);
-
-    final bgColor = isCoding
-        ? const Color(0xFF0F141C)
-        : (isFlow ? const Color(0xFF0A1815) : AppColors.background);
-    final textPrimaryColor =
-        isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary;
-    final textSecondaryColor =
-        isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary;
+    const bgColor = AppColors.background;
+    const textPrimaryColor = AppColors.textPrimary;
+    const textSecondaryColor = AppColors.textSecondary;
     final isCompact = MediaQuery.sizeOf(context).height < 700;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
@@ -1186,75 +1178,23 @@ class _ActiveFocusViewState extends State<_ActiveFocusView>
       backgroundColor: bgColor,
       body: Stack(
         children: [
-          // 1. FULL-SCREEN ANIMATION CANVAS: Covers the whole screen
+          // A quiet work surface gives the session a place without competing
+          // with the countdown or the task title.
           Positioned.fill(
             child: AnimatedBuilder(
               animation:
                   Listenable.merge([_breatheController, _loopController]),
               builder: (context, _) {
-                final time = reduceMotion ? 0.35 : _loopController.value;
-                final pulse = reduceMotion ? 0.45 : _breatheController.value;
-
                 return CustomPaint(
-                  painter: switch (preset) {
-                    FocusPreset.coding => _CodingWorkspacePainter(
-                        time: time,
-                        progress: progress,
-                        isRunning: isRunning,
-                        isEndingSoon: isEndingSoon,
-                      ),
-                    FocusPreset.reading => _ReadingWorkspacePainter(
-                        time: time,
-                        pulse: pulse,
-                        progress: progress,
-                        isRunning: isRunning,
-                        isEndingSoon: isEndingSoon,
-                      ),
-                    FocusPreset.study => _StudyWorkspacePainter(
-                        time: time,
-                        progress: progress,
-                        isRunning: isRunning,
-                        isEndingSoon: isEndingSoon,
-                      ),
-                    FocusPreset.deepWork => _DeepWorkWorkspacePainter(
-                        time: time,
-                        pulse: pulse,
-                        progress: progress,
-                        isRunning: isRunning,
-                        isEndingSoon: isEndingSoon,
-                      ),
-                    FocusPreset.assignment => _AssignmentWorkspacePainter(
-                        time: time,
-                        progress: progress,
-                        isRunning: isRunning,
-                        isEndingSoon: isEndingSoon,
-                      ),
-                    FocusPreset.flow => _FlowWorkspacePainter(
-                        time: time,
-                        pulse: pulse,
-                        progress: progress,
-                        isRunning: isRunning,
-                        isEndingSoon: isEndingSoon,
-                      ),
-                  },
+                  painter: _FocusEnvironmentPainter(
+                    preset: preset,
+                    progress: progress,
+                    time: reduceMotion ? 0.5 : _loopController.value,
+                    isRunning: isRunning,
+                    isEndingSoon: isEndingSoon,
+                  ),
                 );
               },
-            ),
-          ),
-
-          Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(
-                painter: _FocusAnchorPainter(
-                  accent: accent,
-                  progress: progress,
-                  phase: reduceMotion ? 0.35 : _loopController.value,
-                  breath: reduceMotion ? 0.45 : _breatheController.value,
-                  isRunning: isRunning,
-                  isEndingSoon: isEndingSoon,
-                  isDark: isDark,
-                ),
-              ),
             ),
           ),
 
@@ -1270,10 +1210,8 @@ class _ActiveFocusViewState extends State<_ActiveFocusView>
                     children: [
                       BeautifulBackButton(
                         onTap: widget.onCloseWorkspace,
-                        backgroundColor:
-                            isDark ? const Color(0xFF1E2836) : null,
-                        foregroundColor:
-                            isDark ? const Color(0xFFF1F5F9) : null,
+                        backgroundColor: AppColors.surface,
+                        foregroundColor: AppColors.textPrimary,
                       ),
                       const Spacer(),
                       Text(
@@ -1340,9 +1278,8 @@ class _ActiveFocusViewState extends State<_ActiveFocusView>
                               child: LinearProgressIndicator(
                                 value: progress,
                                 minHeight: 4,
-                                backgroundColor: isDark
-                                    ? const Color(0xFF1E2836)
-                                    : AppColors.divider.withValues(alpha: 0.6),
+                                backgroundColor:
+                                    AppColors.divider.withValues(alpha: 0.6),
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                   isEndingSoon
                                       ? AppColors.attention
@@ -1405,20 +1342,13 @@ class _ActiveFocusViewState extends State<_ActiveFocusView>
                               ? widget.focus.pause
                               : widget.focus.resume,
                           style: FilledButton.styleFrom(
-                            backgroundColor: isRunning
-                                ? (isDark
-                                    ? const Color(0xFF1E2836)
-                                    : AppColors.surface)
-                                : accent,
+                            backgroundColor:
+                                isRunning ? AppColors.surface : accent,
                             foregroundColor:
                                 isRunning ? textPrimaryColor : Colors.white,
                             elevation: 0,
                             side: BorderSide(
-                              color: isRunning
-                                  ? (isDark
-                                      ? const Color(0xFF2C394B)
-                                      : AppColors.divider)
-                                  : accent,
+                              color: isRunning ? AppColors.divider : accent,
                               width: 1.2,
                             ),
                             shape: RoundedRectangleBorder(
@@ -1495,833 +1425,174 @@ class _ActiveFocusViewState extends State<_ActiveFocusView>
   }
 }
 
-class _FocusAnchorPainter extends CustomPainter {
-  const _FocusAnchorPainter({
-    required this.accent,
+class _FocusEnvironmentPainter extends CustomPainter {
+  const _FocusEnvironmentPainter({
+    required this.preset,
     required this.progress,
-    required this.phase,
-    required this.breath,
-    required this.isRunning,
-    required this.isEndingSoon,
-    required this.isDark,
-  });
-
-  final Color accent;
-  final double progress;
-  final double phase;
-  final double breath;
-  final bool isRunning;
-  final bool isEndingSoon;
-  final bool isDark;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height * 0.46);
-    final baseRadius = (size.shortestSide * 0.31).clamp(104.0, 156.0);
-    final radius = baseRadius + breath * 8;
-    final quietColor = isDark ? Colors.white : AppColors.textPrimary;
-    final opacity = isRunning ? 0.14 : 0.07;
-
-    final haloPaint = Paint()
-      ..color = quietColor.withValues(alpha: opacity)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    canvas.drawCircle(center, radius, haloPaint);
-
-    final progressPaint = Paint()
-      ..color = (isEndingSoon ? AppColors.attention : accent)
-          .withValues(alpha: isRunning ? 0.62 : 0.24)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = isEndingSoon ? 2.5 : 2
-      ..strokeCap = StrokeCap.round;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2 + phase * math.pi * 2,
-      math.pi * 1.35 * progress.clamp(0.06, 1),
-      false,
-      progressPaint,
-    );
-
-    final cuePaint = Paint()
-      ..color = accent.withValues(alpha: isRunning ? 0.28 : 0.12)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius + 14),
-      math.pi * 0.15 + phase * math.pi * 2,
-      math.pi * 0.32,
-      false,
-      cuePaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _FocusAnchorPainter old) =>
-      old.accent != accent ||
-      old.progress != progress ||
-      old.phase != phase ||
-      old.breath != breath ||
-      old.isRunning != isRunning ||
-      old.isEndingSoon != isEndingSoon ||
-      old.isDark != isDark;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 1. CODING WORKSPACE PAINTER: Developer IDE, syntax lines, and typing cursor.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _CodingWorkspacePainter extends CustomPainter {
-  _CodingWorkspacePainter({
     required this.time,
-    required this.progress,
     required this.isRunning,
     required this.isEndingSoon,
   });
 
-  final double time;
+  final FocusPreset preset;
   final double progress;
+  final double time;
   final bool isRunning;
   final bool isEndingSoon;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final bgPaint = Paint()..color = const Color(0xFF0F141C);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+    final background = Paint()..color = AppColors.background;
+    canvas.drawRect(Offset.zero & size, background);
 
-    // Gutter line
-    const gutterX = 42.0;
-    canvas.drawLine(
-      const Offset(gutterX, 0),
-      Offset(gutterX, size.height),
-      Paint()
-        ..color = const Color(0xFF1E2633)
-        ..strokeWidth = 1.0,
+    final deskTop = size.height * 0.77;
+    canvas.drawRect(
+      Rect.fromLTWH(0, deskTop, size.width, size.height - deskTop),
+      Paint()..color = const Color(0xFFE7DED0),
     );
 
-    // Line numbers
-    final activeLineIndex = isRunning ? (6 + ((time * 4).toInt() % 4)) : 7;
-    final totalLines = (size.height / 24).floor();
+    final window = RRect.fromRectAndRadius(
+      Rect.fromLTWH(size.width * 0.73, 92, size.width * 0.18, 170),
+      const Radius.circular(6),
+    );
+    canvas.drawRRect(window, Paint()..color = const Color(0xFFDCE8E9));
+    canvas.drawLine(
+      Offset(size.width * 0.82, 92),
+      Offset(size.width * 0.82, 262),
+      Paint()
+        ..color = const Color(0xFFB8C9C9)
+        ..strokeWidth = 1,
+    );
 
-    for (int i = 1; i <= totalLines; i++) {
-      final y = 20.0 + (i * 24.0);
-      final isCurrent = i == activeLineIndex;
-
-      if (isCurrent && isRunning) {
-        canvas.drawRect(
-          Rect.fromLTWH(gutterX, y - 4, size.width - gutterX, 22),
-          Paint()
-            ..color = isEndingSoon
-                ? const Color(0xFF282012)
-                : const Color(0xFF162030),
+    final quietObject = Paint()..color = const Color(0xFFD5CEC0);
+    final left = size.width * 0.08;
+    switch (preset) {
+      case FocusPreset.coding:
+        final monitor = RRect.fromRectAndRadius(
+          Rect.fromLTWH(left, size.height * 0.25, size.width * 0.25, 190),
+          const Radius.circular(8),
         );
-      }
-
-      final lineStr = i.toString().padLeft(2, '0');
-      final numPainter = TextPainter(
-        text: TextSpan(
-          text: lineStr,
-          style: TextStyle(
-            color: isCurrent && isRunning
-                ? (isEndingSoon ? AppColors.attention : const Color(0xFF38BDF8))
-                : const Color(0xFF334155),
-            fontSize: 11,
-            fontFamily: 'monospace',
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      numPainter.paint(canvas, Offset(10, y));
-    }
-
-    // Background code tokens
-    final codeSnippets = [
-      [
-        ('import ', const Color(0xFF38BDF8)),
-        ('\'package:todow/core.dart\';', const Color(0xFF34D399))
-      ],
-      [
-        ('class ', const Color(0xFF38BDF8)),
-        ('DeepFocusController ', const Color(0xFFFBBF24)),
-        ('{', const Color(0xFF94A3B8))
-      ],
-      [
-        ('  final ', const Color(0xFF38BDF8)),
-        ('state = ', const Color(0xFF94A3B8)),
-        ('ActiveSession();', const Color(0xFFF8FAFC))
-      ],
-      [
-        ('  Stream<', const Color(0xFF38BDF8)),
-        ('FocusTick', const Color(0xFFFBBF24)),
-        ('> tick() ', const Color(0xFF60A5FA)),
-        ('async* {', const Color(0xFF38BDF8))
-      ],
-      [
-        ('    while ', const Color(0xFF38BDF8)),
-        ('(session.isRunning) {', const Color(0xFF94A3B8))
-      ],
-      [
-        ('      yield ', const Color(0xFF38BDF8)),
-        ('session.', const Color(0xFFF8FAFC)),
-        ('elapsed();', const Color(0xFF34D399))
-      ],
-      [
-        ('      await ', const Color(0xFF38BDF8)),
-        ('Future.', const Color(0xFFF8FAFC)),
-        ('delayed(1.sec);', const Color(0xFF34D399))
-      ],
-      [('    }', const Color(0xFF94A3B8))],
-      [('  }', const Color(0xFF94A3B8))],
-      [
-        ('  void ', const Color(0xFF38BDF8)),
-        ('commitSprint() ', const Color(0xFF60A5FA)),
-        ('{', const Color(0xFF94A3B8))
-      ],
-      [
-        ('    metrics.', const Color(0xFFF8FAFC)),
-        ('recordBlock(progress);', const Color(0xFF34D399))
-      ],
-      [('  }', const Color(0xFF94A3B8))],
-      [('}', const Color(0xFF94A3B8))],
-    ];
-
-    double snippetY = 68.0;
-    for (int i = 0;
-        i < codeSnippets.length && snippetY < size.height - 120;
-        i++) {
-      final tokens = codeSnippets[i];
-      final inCenterZone =
-          snippetY > (size.height * 0.32) && snippetY < (size.height * 0.68);
-      final alphaFactor = inCenterZone ? 0.08 : 0.40;
-
-      double x = gutterX + 14.0;
-      for (final t in tokens) {
-        final text = t.$1;
-        final color = t.$2.withValues(alpha: alphaFactor);
-
-        final painter = TextPainter(
-          text: TextSpan(
-            text: text,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontFamily: 'monospace',
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        painter.paint(canvas, Offset(x, snippetY));
-        x += painter.width;
-      }
-
-      if (i == (activeLineIndex % codeSnippets.length) && isRunning) {
-        final cursorVisible = (time * 4).toInt() % 2 == 0;
-        if (cursorVisible) {
-          canvas.drawRect(
-            Rect.fromLTWH(x + 2, snippetY + 1, 7, 13),
+        canvas.drawRRect(monitor, Paint()..color = const Color(0xFF34434A));
+        canvas.drawRRect(
+          monitor.deflate(12),
+          Paint()..color = const Color(0xFF53656A),
+        );
+        for (var i = 0; i < 7; i++) {
+          canvas.drawLine(
+            Offset(left + 28, size.height * 0.31 + i * 18),
+            Offset(
+                left + 120 + (i.isEven ? 28 : 0), size.height * 0.31 + i * 18),
             Paint()
-              ..color =
-                  isEndingSoon ? AppColors.attention : const Color(0xFF38BDF8),
+              ..color = const Color(0xFFA8C5C6)
+              ..strokeWidth = 2,
           );
         }
-      }
-
-      snippetY += 24.0;
-    }
-
-    // Status line at the bottom
-    final footerY = size.height - 76;
-    canvas.drawLine(
-      Offset(0, footerY),
-      Offset(size.width, footerY),
-      Paint()..color = const Color(0xFF1E2633),
-    );
-
-    final statusText = !isRunning
-        ? 'NORMAL  ·  UTF-8  ·  Dart 3.6  ·  PAUSED'
-        : (isEndingSoon
-            ? 'COMPLETING  ·  SPRINT COMMIT READY  ·  WRAP UP'
-            : 'NORMAL  ·  UTF-8  ·  Dart 3.6  ·  ACTIVE FLOW');
-    final statusPainter = TextPainter(
-      text: TextSpan(
-        text: statusText,
-        style: TextStyle(
-          color: isEndingSoon
-              ? AppColors.attention
-              : (isRunning ? const Color(0xFF475569) : const Color(0xFFF59E0B)),
-          fontSize: 9.5,
-          fontFamily: 'monospace',
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.8,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    statusPainter.paint(canvas, Offset(16, footerY + 6));
-  }
-
-  @override
-  bool shouldRepaint(covariant _CodingWorkspacePainter old) =>
-      old.time != time ||
-      old.progress != progress ||
-      old.isRunning != isRunning ||
-      old.isEndingSoon != isEndingSoon;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. READING WORKSPACE PAINTER: Open book layout, typographic guides, ribbon.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ReadingWorkspacePainter extends CustomPainter {
-  _ReadingWorkspacePainter({
-    required this.time,
-    required this.pulse,
-    required this.progress,
-    required this.isRunning,
-    required this.isEndingSoon,
-  });
-
-  final double time;
-  final double pulse;
-  final double progress;
-  final bool isRunning;
-  final bool isEndingSoon;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bgPaint = Paint()..color = const Color(0xFFFAF7F2);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
-
-    final midX = size.width / 2;
-
-    // Center crease
-    canvas.drawLine(
-      Offset(midX, 60),
-      Offset(midX, size.height - 80),
-      Paint()
-        ..color = const Color(0xFFE5DFD4)
-        ..strokeWidth = 1.0,
-    );
-
-    final leftX = 28.0;
-    final rightX = midX + 16.0;
-    final colWidth = midX - 44.0;
-    final pageFlutter = isRunning ? math.sin(time * 2 * math.pi) * 3.0 : 0.0;
-
-    final totalLines = ((size.height - 160) / 24).floor();
-    final activeLine =
-        ((progress * totalLines).toInt()).clamp(0, totalLines - 1);
-
-    for (int i = 0; i < totalLines; i++) {
-      final y = 70.0 + (i * 24.0);
-      final inCenterZone = y > (size.height * 0.30) && y < (size.height * 0.65);
-      final isCurrent = i == activeLine;
-
-      final alpha = inCenterZone ? 0.05 : 0.18;
-      final linePaint = Paint()
-        ..color = isCurrent && isRunning
-            ? (isEndingSoon
-                ? AppColors.attention
-                : AppColors.decorCoral.withValues(alpha: 0.65))
-            : AppColors.textSecondary.withValues(alpha: alpha)
-        ..strokeWidth = isCurrent && isRunning ? 2.0 : 1.2
-        ..strokeCap = StrokeCap.round;
-
-      final leftLen = (i % 3 == 0) ? colWidth * 0.72 : colWidth;
-      canvas.drawLine(Offset(leftX, y), Offset(leftX + leftLen, y), linePaint);
-
-      final rightLen = (i % 2 == 0) ? colWidth * 0.85 : colWidth;
-      canvas.drawLine(
-        Offset(rightX, y + pageFlutter * 0.2),
-        Offset(rightX + rightLen, y + pageFlutter * 0.2),
-        linePaint,
-      );
-
-      if (isCurrent && isRunning && !inCenterZone) {
-        final guidePaint = Paint()
-          ..color = (isEndingSoon ? AppColors.attention : AppColors.decorCoral)
-              .withValues(alpha: 0.09)
-          ..style = PaintingStyle.fill;
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromLTWH(leftX - 4, y - 6, colWidth + 8, 14),
-            const Radius.circular(3),
-          ),
-          guidePaint,
+        canvas.drawRect(
+          Rect.fromLTWH(left + 92, size.height * 0.69, 40, 28),
+          quietObject,
         );
-      }
+      case FocusPreset.reading:
+        final book = Path()
+          ..moveTo(left, size.height * 0.66)
+          ..lineTo(size.width * 0.34, size.height * 0.57)
+          ..lineTo(size.width * 0.55, size.height * 0.66)
+          ..lineTo(size.width * 0.34, size.height * 0.75)
+          ..close();
+        canvas.drawPath(book, Paint()..color = const Color(0xFFFFFCF2));
+        for (var i = 0; i < 5; i++) {
+          canvas.drawLine(
+            Offset(left + 30, size.height * 0.63 + i * 14),
+            Offset(size.width * 0.30, size.height * 0.60 + i * 14),
+            Paint()..color = const Color(0xFFD2C9B8),
+          );
+        }
+      case FocusPreset.assignment:
+        final paper =
+            Rect.fromLTWH(left, size.height * 0.23, size.width * 0.31, 260);
+        canvas.drawRect(paper, Paint()..color = const Color(0xFFFFFCF6));
+        for (var i = 0; i < 8; i++) {
+          final y = paper.top + 34 + i * 25;
+          canvas.drawLine(
+            Offset(paper.left + 42, y),
+            Offset(paper.right - 24, y),
+            Paint()..color = const Color(0xFFD8DFDA),
+          );
+          if (progress > (i + 1) / 8) {
+            canvas.drawLine(
+              Offset(paper.left + 14, y - 3),
+              Offset(paper.left + 18, y + 2),
+              Paint()
+                ..color = AppColors.action
+                ..strokeWidth = 2,
+            );
+            canvas.drawLine(
+              Offset(paper.left + 18, y + 2),
+              Offset(paper.left + 26, y - 7),
+              Paint()
+                ..color = AppColors.action
+                ..strokeWidth = 2,
+            );
+          }
+        }
+      case FocusPreset.study:
+        for (var i = 0; i < 3; i++) {
+          final x = left + i * 76;
+          canvas.drawRRect(
+            RRect.fromRectAndRadius(
+              Rect.fromLTWH(x, size.height * 0.31 + i * 12, 62, 92),
+              const Radius.circular(5),
+            ),
+            Paint()..color = const Color(0xFFFFFCF5),
+          );
+          canvas.drawLine(
+            Offset(x + 14, size.height * 0.37 + i * 12),
+            Offset(x + 48, size.height * 0.37 + i * 12),
+            Paint()..color = const Color(0xFFC9D2C7),
+          );
+        }
+      case FocusPreset.deepWork || FocusPreset.flow:
+        final notebook = RRect.fromRectAndRadius(
+          Rect.fromLTWH(left, size.height * 0.28, size.width * 0.28, 230),
+          const Radius.circular(6),
+        );
+        canvas.drawRRect(notebook, Paint()..color = const Color(0xFFFAF8EF));
+        for (var i = 0; i < 7; i++) {
+          canvas.drawLine(
+            Offset(left + 44, size.height * 0.36 + i * 22),
+            Offset(left + 188, size.height * 0.36 + i * 22),
+            Paint()..color = const Color(0xFFBFC0B2),
+          );
+        }
     }
 
-    // Silk bookmark ribbon
-    final ribbonX = size.width - 32;
-    final ribbonH = (isEndingSoon ? 140.0 : 110.0) + pageFlutter;
-    final ribbonPath = Path()
-      ..moveTo(ribbonX, 0)
-      ..lineTo(ribbonX, ribbonH)
-      ..lineTo(ribbonX + 5, ribbonH - 6)
-      ..lineTo(ribbonX + 10, ribbonH)
-      ..lineTo(ribbonX + 10, 0);
-    canvas.drawPath(
-      ribbonPath,
-      Paint()
-        ..color = (isEndingSoon ? AppColors.attention : AppColors.decorCoral)
-            .withValues(alpha: 0.85),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _ReadingWorkspacePainter old) =>
-      old.time != time ||
-      old.pulse != pulse ||
-      old.progress != progress ||
-      old.isRunning != isRunning ||
-      old.isEndingSoon != isEndingSoon;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. STUDY WORKSPACE PAINTER: Academic notebook, margin rules, derivations.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _StudyWorkspacePainter extends CustomPainter {
-  _StudyWorkspacePainter({
-    required this.time,
-    required this.progress,
-    required this.isRunning,
-    required this.isEndingSoon,
-  });
-
-  final double time;
-  final double progress;
-  final bool isRunning;
-  final bool isEndingSoon;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bgPaint = Paint()..color = const Color(0xFFFCFBF7);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
-
-    // Margin rule
-    const marginX = 46.0;
+    final progressX = size.width * (0.12 + progress * 0.46);
     canvas.drawLine(
-      const Offset(marginX, 0),
-      Offset(marginX, size.height),
+      Offset(progressX, deskTop + 12),
+      Offset(progressX, deskTop + 34),
       Paint()
-        ..color = AppColors.decorCoral.withValues(alpha: 0.45)
-        ..strokeWidth = 1.2,
+        ..color = isEndingSoon ? AppColors.attention : AppColors.action
+        ..strokeWidth = 3,
     );
 
-    // Ruled lines
-    final rulePaint = Paint()
-      ..color = const Color(0xFFE2E8F0)
-      ..strokeWidth = 0.9;
-    final totalLines = ((size.height - 120) / 24).floor();
-
-    for (int i = 0; i < totalLines; i++) {
-      final y = 60.0 + (i * 24.0);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), rulePaint);
-    }
-
-    // Progressive study notes & derivations
-    final activeCount = ((progress * 14).toInt() + 1).clamp(1, 12);
-    final notePaint = Paint()
-      ..color = AppColors.textPrimary.withValues(alpha: 0.55)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.3
-      ..strokeCap = StrokeCap.round;
-
-    for (int i = 0; i < activeCount; i++) {
-      final y = 84.0 + (i * 48.0);
-      if (y > size.height - 100) break;
-
-      final inCenterZone = y > (size.height * 0.32) && y < (size.height * 0.65);
-      final alpha = inCenterZone ? 0.08 : 0.65;
-
+    if (isRunning) {
+      final ambientX =
+          size.width * (0.12 + 0.08 * math.sin(time * math.pi * 2));
       canvas.drawCircle(
-        Offset(marginX + 8, y - 6),
-        2.2,
-        Paint()
-          ..color = (isEndingSoon ? AppColors.attention : AppColors.action)
-              .withValues(alpha: alpha),
+        Offset(ambientX, deskTop + 8),
+        3,
+        Paint()..color = const Color(0xFFB86B4B),
       );
-
-      final strokeW = (i % 2 == 0 ? size.width * 0.55 : size.width * 0.42);
-      final strokePath = Path()..moveTo(marginX + 16, y - 6);
-      strokePath.quadraticBezierTo(
-        marginX + (strokeW * 0.5),
-        y - 6 - (i % 2 == 0 ? 3.0 : -2.0),
-        marginX + strokeW,
-        y - 6,
-      );
-      canvas.drawPath(strokePath,
-          notePaint..color = AppColors.textPrimary.withValues(alpha: alpha));
-
-      if (i == activeCount - 1 && isRunning && !inCenterZone) {
-        final tipX = marginX + strokeW + 6;
-        canvas.drawCircle(
-          Offset(tipX, y - 6),
-          3.0,
-          Paint()
-            ..color = isEndingSoon ? AppColors.attention : AppColors.action,
-        );
-      }
     }
   }
 
   @override
-  bool shouldRepaint(covariant _StudyWorkspacePainter old) =>
-      old.time != time ||
-      old.progress != progress ||
-      old.isRunning != isRunning ||
-      old.isEndingSoon != isEndingSoon;
+  bool shouldRepaint(covariant _FocusEnvironmentPainter oldDelegate) =>
+      oldDelegate.preset != preset ||
+      oldDelegate.progress != progress ||
+      oldDelegate.time != time ||
+      oldDelegate.isRunning != isRunning ||
+      oldDelegate.isEndingSoon != isEndingSoon;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 4. DEEP WORK WORKSPACE PAINTER: Architectural coordinate grid, harmonic lattice.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _DeepWorkWorkspacePainter extends CustomPainter {
-  _DeepWorkWorkspacePainter({
-    required this.time,
-    required this.pulse,
-    required this.progress,
-    required this.isRunning,
-    required this.isEndingSoon,
-  });
-
-  final double time;
-  final double pulse;
-  final double progress;
-  final bool isRunning;
-  final bool isEndingSoon;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bgPaint = Paint()..color = const Color(0xFFF7F6F2);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
-
-    // Architectural grid dots
-    final dotPaint = Paint()
-      ..color = const Color(0xFFCBD5E1).withValues(alpha: 0.50);
-    for (double x = 20; x < size.width; x += 28) {
-      for (double y = 30; y < size.height; y += 28) {
-        canvas.drawCircle(Offset(x, y), 0.8, dotPaint);
-      }
-    }
-
-    final center = Offset(size.width / 2, size.height * 0.44);
-
-    // Crosshairs
-    final crossPaint = Paint()
-      ..color = (isEndingSoon ? AppColors.attention : AppColors.textSecondary)
-          .withValues(alpha: 0.25)
-      ..strokeWidth = 1.0;
-    canvas.drawLine(Offset(center.dx - 24, center.dy),
-        Offset(center.dx + 24, center.dy), crossPaint);
-    canvas.drawLine(Offset(center.dx, center.dy - 24),
-        Offset(center.dx, center.dy + 24), crossPaint);
-
-    // Expanding harmonic resonance wave
-    final baseRadius = isEndingSoon ? size.width * 0.32 : size.width * 0.38;
-    final waveR = baseRadius + (pulse * (isEndingSoon ? 20.0 : 30.0));
-    canvas.drawCircle(
-      center,
-      waveR,
-      Paint()
-        ..color = (isEndingSoon ? AppColors.attention : const Color(0xFFF59E0B))
-            .withValues(alpha: (1.0 - pulse) * 0.24)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = isEndingSoon ? 1.6 : 1.2,
-    );
-
-    // Rotating orbital ellipses
-    final orbitAngles = [
-      -math.pi / 6 + (time * 0.35 * (isRunning ? 1.0 : 0.0)),
-      math.pi / 3 - (time * 0.25 * (isRunning ? 1.0 : 0.0)),
-    ];
-
-    for (int i = 0; i < 2; i++) {
-      canvas.save();
-      canvas.translate(center.dx, center.dy);
-      canvas.rotate(orbitAngles[i]);
-
-      final ellipsePaint = Paint()
-        ..color = (isEndingSoon
-                ? AppColors.attention
-                : (i == 0 ? AppColors.attention : AppColors.action))
-            .withValues(alpha: 0.24 + (pulse * 0.12))
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2;
-
-      final rect = Rect.fromCenter(
-        center: Offset.zero,
-        width: baseRadius * 2.2,
-        height: baseRadius * 1.1,
-      );
-      canvas.drawOval(rect, ellipsePaint);
-
-      final nodeAngle = (time * 2 * math.pi * (i == 0 ? 0.9 : -0.7));
-      final nodeX = (baseRadius * 1.1) * math.cos(nodeAngle);
-      final nodeY = (baseRadius * 0.55) * math.sin(nodeAngle);
-
-      canvas.drawCircle(
-        Offset(nodeX, nodeY),
-        3.5,
-        Paint()
-          ..color = isEndingSoon
-              ? AppColors.attention
-              : (i == 0 ? AppColors.attention : AppColors.action),
-      );
-
-      canvas.restore();
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DeepWorkWorkspacePainter old) =>
-      old.time != time ||
-      old.pulse != pulse ||
-      old.progress != progress ||
-      old.isRunning != isRunning ||
-      old.isEndingSoon != isEndingSoon;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. ASSIGNMENT WORKSPACE PAINTER: Deliverable checklist with progressive ticks.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AssignmentWorkspacePainter extends CustomPainter {
-  _AssignmentWorkspacePainter({
-    required this.time,
-    required this.progress,
-    required this.isRunning,
-    required this.isEndingSoon,
-  });
-
-  final double time;
-  final double progress;
-  final bool isRunning;
-  final bool isEndingSoon;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bgPaint = Paint()..color = const Color(0xFFF8F9FA);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
-
-    final gridPaint = Paint()
-      ..color = const Color(0xFFE2E8F0).withValues(alpha: 0.6)
-      ..strokeWidth = 0.8;
-    canvas.drawLine(
-        const Offset(32, 60), Offset(32, size.height - 80), gridPaint);
-    canvas.drawLine(Offset(size.width - 32, 60),
-        Offset(size.width - 32, size.height - 80), gridPaint);
-
-    final items = [
-      'Problem scope and objectives',
-      'Literature & methodology notes',
-      'Execution and core solution',
-      'Quality review and conclusion',
-    ];
-
-    double y = 80.0;
-    final completedCount =
-        isEndingSoon ? items.length : (progress * items.length).floor();
-
-    for (int i = 0; i < items.length; i++) {
-      final isDone = i < completedCount;
-      final isCurrent = i == completedCount;
-
-      final inCenterZone = y > (size.height * 0.32) && y < (size.height * 0.65);
-      final alpha = inCenterZone ? 0.08 : 1.0;
-
-      final boxRect = Rect.fromLTWH(38, y, 13, 13);
-      final boxPaint = Paint()
-        ..color = (isDone
-                ? (isEndingSoon ? const Color(0xFF10B981) : AppColors.action)
-                : (isCurrent ? AppColors.attention : AppColors.divider))
-            .withValues(alpha: alpha)
-        ..style = isDone ? PaintingStyle.fill : PaintingStyle.stroke
-        ..strokeWidth = 1.3;
-      canvas.drawRRect(
-          RRect.fromRectAndRadius(boxRect, const Radius.circular(3)), boxPaint);
-
-      if (isDone) {
-        final checkPath = Path()
-          ..moveTo(41, y + 6.5)
-          ..lineTo(43.5, y + 9.5)
-          ..lineTo(48, y + 3.5);
-        canvas.drawPath(
-          checkPath,
-          Paint()
-            ..color = Colors.white.withValues(alpha: alpha)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.5
-            ..strokeCap = StrokeCap.round,
-        );
-      }
-
-      final itemPainter = TextPainter(
-        text: TextSpan(
-          text: items[i],
-          style: TextStyle(
-            color: (isDone
-                    ? AppColors.textSecondary
-                    : (isCurrent
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary))
-                .withValues(alpha: alpha),
-            fontSize: 11,
-            fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
-            decoration: isDone ? TextDecoration.lineThrough : null,
-            decorationColor: AppColors.textSecondary.withValues(alpha: alpha),
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      itemPainter.paint(canvas, Offset(58, y));
-
-      y += 28.0;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _AssignmentWorkspacePainter old) =>
-      old.time != time ||
-      old.progress != progress ||
-      old.isRunning != isRunning ||
-      old.isEndingSoon != isEndingSoon;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 6. FLOW WORKSPACE PAINTER: Ultradian BRAC cycle canvas (Kleitman, 1963 — 90m focus / 20m rest).
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _FlowWorkspacePainter extends CustomPainter {
-  _FlowWorkspacePainter({
-    required this.time,
-    required this.pulse,
-    required this.progress,
-    required this.isRunning,
-    required this.isEndingSoon,
-  });
-
-  final double time;
-  final double pulse;
-  final double progress;
-  final bool isRunning;
-  final bool isEndingSoon;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bgPaint = Paint()..color = const Color(0xFF0A1815);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
-
-    final midY = size.height * 0.44;
-
-    // Soft matrix dots
-    final dotPaint = Paint()
-      ..color = const Color(0xFF13362E).withValues(alpha: 0.60);
-    for (double x = 20; x < size.width; x += 32) {
-      for (double y = 40; y < size.height; y += 32) {
-        canvas.drawCircle(Offset(x, y), 0.9, dotPaint);
-      }
-    }
-
-    // Dual flowing sine waves (Ultradian Focus & Rest cycle)
-    final wavePaint1 = Paint()
-      ..color = (isEndingSoon ? AppColors.attention : const Color(0xFF10B981))
-          .withValues(alpha: isEndingSoon ? 0.45 : 0.28)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8;
-
-    final wavePaint2 = Paint()
-      ..color = (isEndingSoon ? AppColors.attention : const Color(0xFF0EA5E9))
-          .withValues(alpha: isEndingSoon ? 0.35 : 0.20)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4;
-
-    final path1 = Path();
-    final path2 = Path();
-
-    final waveSpeed = isRunning ? (time * 2 * math.pi) : 0.0;
-    final waveAmplitude = isEndingSoon ? 22.0 + (pulse * 6.0) : 34.0;
-
-    for (double x = 0; x <= size.width; x += 4) {
-      final normalizedX = x / size.width;
-      final y1 = midY +
-          math.sin((normalizedX * 3.0 * math.pi) + waveSpeed) * waveAmplitude;
-      final y2 = midY +
-          math.cos((normalizedX * 2.5 * math.pi) - waveSpeed * 0.7) *
-              (waveAmplitude * 0.75);
-
-      if (x == 0) {
-        path1.moveTo(x, y1);
-        path2.moveTo(x, y2);
-      } else {
-        path1.lineTo(x, y1);
-        path2.lineTo(x, y2);
-      }
-    }
-
-    canvas.drawPath(path1, wavePaint1);
-    canvas.drawPath(path2, wavePaint2);
-
-    // Focal breathing glow behind timer
-    final center = Offset(size.width / 2, midY);
-    final glowRadius = (size.width * 0.35) + (pulse * 18.0);
-    canvas.drawCircle(
-      center,
-      glowRadius,
-      Paint()
-        ..color = (isEndingSoon ? AppColors.attention : const Color(0xFF10B981))
-            .withValues(alpha: (1.0 - pulse) * (isEndingSoon ? 0.16 : 0.10))
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2,
-    );
-
-    // Status baseline
-    final footerY = size.height - 76;
-    canvas.drawLine(
-      Offset(0, footerY),
-      Offset(size.width, footerY),
-      Paint()..color = const Color(0xFF15332B),
-    );
-
-    final statusText = !isRunning
-        ? 'ULTRADIAN FLOW  ·  90M FOCUS / 20M REST  ·  PAUSED'
-        : (isEndingSoon
-            ? 'ULTRADIAN FLOW  ·  RECOVERY PHASE  ·  20M BREAK APPROACHING'
-            : 'ULTRADIAN FLOW  ·  90M FOCUS PHASE  ·  PEAK CYCLE');
-    final statusPainter = TextPainter(
-      text: TextSpan(
-        text: statusText,
-        style: TextStyle(
-          color: isEndingSoon
-              ? AppColors.attention
-              : (isRunning ? const Color(0xFF34D399) : const Color(0xFF94A3B8)),
-          fontSize: 9.5,
-          fontFamily: 'monospace',
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.8,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    statusPainter.paint(canvas, Offset(16, footerY + 6));
-  }
-
-  @override
-  bool shouldRepaint(covariant _FlowWorkspacePainter old) =>
-      old.time != time ||
-      old.pulse != pulse ||
-      old.progress != progress ||
-      old.isRunning != isRunning ||
-      old.isEndingSoon != isEndingSoon;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPER FUNCTIONS & DIALOGS
-// ─────────────────────────────────────────────────────────────────────────────
 
 Color _presetAccentColor(FocusPreset preset) {
   return switch (preset) {
