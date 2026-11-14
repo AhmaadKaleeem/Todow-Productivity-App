@@ -228,6 +228,11 @@ class RemindersSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasDailyReminder = plan.dailyReminderMinutes != null;
+    final hasAdvancedOptions = hasDailyReminder ||
+        plan.constantReminder ||
+        plan.flexibleReminder ||
+        plan.quietHoursStartMinutes != null ||
+        plan.ringAsAlarm;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -403,6 +408,30 @@ class RemindersSection extends StatelessWidget {
                 ),
               ),
 
+              ExpansionTile(
+                initiallyExpanded: hasAdvancedOptions,
+                tilePadding: const EdgeInsets.symmetric(horizontal: 20),
+                childrenPadding: EdgeInsets.zero,
+                iconColor: AppColors.textSecondary,
+                collapsedIconColor: AppColors.textSecondary,
+                title: const Text(
+                  'More reminder options',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Daily, repeat, flexible timing, quiet hours and alarm sound',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                children: [
+                  Column(
+                    children: [
               _Divider(),
 
               // ── Daily Reminder ───────────────────────────────────────────────
@@ -783,6 +812,10 @@ class RemindersSection extends StatelessWidget {
                     ],
                   ],
                 ),
+              ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),

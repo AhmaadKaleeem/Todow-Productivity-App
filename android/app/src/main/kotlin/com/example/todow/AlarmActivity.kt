@@ -19,6 +19,9 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.content.res.Configuration
+import android.animation.ObjectAnimator
+import android.provider.Settings
+import android.view.animation.AccelerateDecelerateInterpolator
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -47,7 +50,8 @@ class AlarmActivity : Activity() {
         window.statusBarColor = Color.parseColor("#F5F1EA")
         window.navigationBarColor = Color.parseColor("#F5F1EA")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            window.decorView.systemUiVisibility =
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         }
 
         val taskId = intent.getStringExtra(AlarmRingingService.EXTRA_TASK_ID) ?: ""
@@ -61,10 +65,9 @@ class AlarmActivity : Activity() {
 
         val cream = Color.parseColor("#F5F1EA")
         val ink = Color.parseColor("#1A1D24")
-        val muted = Color.parseColor("#78716C")
+        val muted = Color.parseColor("#625C56")
         val azure = Color.parseColor("#0EA5E9")
         val amber = Color.parseColor("#F59E0B")
-        val red = Color.parseColor("#EF4444")
         val divider = Color.parseColor("#E8E3DA")
         val isWide = resources.configuration.screenWidthDp >= 600 ||
             resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -106,79 +109,82 @@ class AlarmActivity : Activity() {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(18f) }
+            ).apply { bottomMargin = dp(30f) }
         }
-        val badge = textView("TODOW ALARM", 11f, azure, Typeface.BOLD).apply {
-            letterSpacing = 0.08f
-            setPadding(dp(11f), dp(7f), dp(11f), dp(7f))
-            background = background(0x1A0EA5E9, 12f)
+        val ringStatus = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            contentDescription = "Alarm is ringing"
         }
-        header.addView(badge)
+        val ringDot = View(this).apply { background = background(amber, 50f) }
+        ringStatus.addView(ringDot, LinearLayout.LayoutParams(dp(9f), dp(9f)).apply {
+            rightMargin = dp(9f)
+        })
+        ringStatus.addView(textView("ALARM RINGING", 12f, ink, Typeface.BOLD).apply {
+            letterSpacing = 0.06f
+        })
+        header.addView(ringStatus)
         header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-        val now = textView(
+        val heading = textView(
             SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date()),
-            15f,
-            muted,
+            if (isWide) 52f else 46f,
+            ink,
             Typeface.BOLD,
-        )
-        header.addView(now)
-        root.addView(header)
-
-        val heading = textView("It’s time for\nyour next step.", if (isWide) 36f else 32f, ink, Typeface.BOLD).apply {
-            gravity = Gravity.CENTER
-            letterSpacing = -0.03f
+        ).apply {
+            letterSpacing = -0.04f
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(8f) }
+            ).apply { bottomMargin = dp(4f) }
         }
+        root.addView(header)
         root.addView(heading)
+
         val date = textView(
             SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()).format(Date()),
             14f,
             muted,
-            Typeface.BOLD,
+            Typeface.NORMAL,
         ).apply {
-            gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(20f) }
+            ).apply { bottomMargin = dp(32f) }
         }
         root.addView(date)
 
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(if (isWide) 28f else 20f), dp(if (isWide) 28f else 22f), dp(if (isWide) 28f else 20f), dp(if (isWide) 28f else 22f))
-            background = background(Color.WHITE, 24f, divider)
-            elevation = dp(3f).toFloat()
+        root.addView(textView("YOUR NEXT TASK", 12f, muted, Typeface.BOLD).apply {
+            letterSpacing = 0.06f
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(20f) }
-        }
-        val alarmLabel = textView("TASK ALARM", 11f, red, Typeface.BOLD).apply {
-            letterSpacing = 0.10f
-            setPadding(dp(9f), dp(5f), dp(9f), dp(5f))
-            background = background(0x14EF4444, 8f)
-        }
-        card.addView(alarmLabel, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        val title = textView(taskTitle, if (isWide) 28f else 24f, ink, Typeface.BOLD).apply {
-            gravity = Gravity.CENTER
+            ).apply { bottomMargin = dp(8f) }
+        })
+        root.addView(textView(taskTitle, if (isWide) 30f else 28f, ink, Typeface.BOLD).apply {
             maxLines = 4
-            setPadding(0, dp(16f), 0, dp(8f))
+            setLineSpacing(0f, 1.08f)
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-            )
+            ).apply { bottomMargin = dp(32f) }
+        })
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
+        ) {
+            ObjectAnimator.ofFloat(ringDot, View.ALPHA, 1f, 0.35f).apply {
+                duration = 1100
+                repeatMode = ObjectAnimator.REVERSE
+                repeatCount = ObjectAnimator.INFINITE
+                interpolator = AccelerateDecelerateInterpolator()
+                start()
+            }
         }
-        card.addView(title)
-        val message = textView("Ringing until you stop it or take a short break.", 14f, muted).apply {
-            gravity = Gravity.CENTER
-            setLineSpacing(0f, 1.2f)
-        }
-        card.addView(message)
-        root.addView(card)
+
+        root.addView(View(this), LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            0,
+            1f,
+        ))
 
         val actions = LinearLayout(this).apply {
             orientation = if (isWide) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
@@ -221,14 +227,14 @@ class AlarmActivity : Activity() {
             }
         }
         val actionWidth = if (isWide) 0 else ViewGroup.LayoutParams.MATCH_PARENT
-        actions.addView(snoozeButton, LinearLayout.LayoutParams(actionWidth, dp(56f), if (isWide) 1f else 0f).apply {
+        actions.addView(stopButton, LinearLayout.LayoutParams(actionWidth, dp(58f), if (isWide) 1f else 0f).apply {
             if (isWide) rightMargin = dp(8f) else bottomMargin = dp(10f)
         })
-        actions.addView(stopButton, LinearLayout.LayoutParams(actionWidth, dp(56f), if (isWide) 1f else 0f))
+        actions.addView(snoozeButton, LinearLayout.LayoutParams(actionWidth, dp(56f), if (isWide) 1f else 0f))
         root.addView(actions)
 
         val openAppButton = Button(this).apply {
-            text = "Open Todow"
+            text = "Open Todow · stops alarm"
             textSize = 14f
             setTextColor(ink)
             typeface = Typeface.DEFAULT_BOLD
@@ -247,7 +253,7 @@ class AlarmActivity : Activity() {
         }
         root.addView(openAppButton)
 
-        val helper = textView("Your alarm will stay active until you choose an action.", 12f, muted).apply {
+        val helper = textView("Snooze gives you 10 more minutes.", 12f, muted).apply {
             gravity = Gravity.CENTER
             setPadding(0, dp(14f), 0, 0)
         }

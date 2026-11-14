@@ -1,6 +1,6 @@
 # Todow
-Todow is a productivity based mobile application for students that brings your schedule and tasks into one place to help students stay organized.
-Todow solves the common student problem of juggling assignments and deadlines across too many platforms. Missing a due date happens too easily, which can cause a chain reaction of stress and falling behind.
+
+Todow is a local-first task planner for students. Create tasks, set deadlines and reminders, and keep university classes and personal plans in one app.
 
 <p align="center">
   <img src="screenshots/dashboard.png" width="320" alt="Todow dashboard screen" />
@@ -12,14 +12,14 @@ Todow solves the common student problem of juggling assignments and deadlines ac
 
 ## Features
 
-### Completed
-- **Task Management** Create, edit, complete, reopen, delete, archive. Includes title, description, priority, start/due dates, tags, and subtasks. Search, filter, and sort. Quick duplicate. Clone recurring tasks. Drag to reorder, swipe to act, and double tap to insert.
-- **Reminders & Alerts** Set multiple custom relative/absolute reminders per task, use intelligent presets (Normal, Assignment, Critical), or set a daily recurring reminder for a task. For high-stakes deadlines, flip on the Constant Reminder to relentlessly ping you until you actually finish the task.
-- **Attachments** Attach local images, PDFs, and files.
-- **Dashboard & Task Creation** Review your day from the dashboard and create tasks with their details in one focused form.
-- **Roadmaps** Build learning plans from connected, progress-tracked Topics. Add and complete Topic tasks, filter them by time, and import or export Roadmaps as CSV or Excel files.
-- **Timetable** Enter classes manually, import a CSV file, or scan an image of your schedule to keep your university classes and personal study blocks in one view. You know exactly where to be without jumping between apps.
-- **Focus Mode** Immersive, full-screen activity workspaces (Coding, Reading, Study, Deep Work, Assignment) with dynamic timer-responsive visual environments, session persistence, and the scientifically proven **40/10 Flow** Ultradian cycle (40 minutes intense focus + 10 minutes restorative rest).
+- **Tasks** Create, edit, complete, reopen, archive, and delete tasks. Add priorities, dates, tags, descriptions, and subtasks. Search, filter, sort, reorder, duplicate, and insert tasks from the list.
+- **Task reminders** Set multiple reminders before a deadline or at the due time. Choose Normal, Assignment, or Critical presets, set custom reminder times, or schedule a daily reminder. Optional settings include repeat reminders, flexible timing around classes, quiet hours, and alarm sounds.
+- **Android full-screen alarms** Show the task name and current time when an alarm rings. Stop it, snooze for 10 minutes, or open Todow. Exact alarms and full-screen display require the matching Android permissions.
+- **Attachments** Add and open images, PDFs, and other local files on a task.
+- **Today dashboard** View overdue and upcoming tasks, active reminders, focus sessions, and today's classes.
+- **Roadmaps** Organize work into ordered Topics with tasks and progress. Import and export roadmaps as CSV or Excel files.
+- **Timetable** Add weekly university classes and personal plans. Import schedules from CSV or Excel, or scan a schedule image into an editable draft.
+- **Focus mode** Run a task-linked timer with pause, resume, and end controls. Focus sessions save their state between app launches.
 
 ### In Progress
 - **Rest-Time Ambient Music** Built-in restorative audio soundscapes and rest music during the 10-minute break interval, selectable by the user to optimize cognitive recovery.
@@ -31,7 +31,7 @@ Todow solves the common student problem of juggling assignments and deadlines ac
 - **Focus Improvements** Android app blocking, allowed apps during study, and focus history.
 - **Advanced Planning** Recurring tasks, weekly/monthly planning, goal tracking, milestone dependencies, and flexible reminder rules.
 
-Everything is stored locally on your device.
+Tasks, reminders, and schedules are stored on your device. Todow's core features work offline.
 
 ## Setup
 
