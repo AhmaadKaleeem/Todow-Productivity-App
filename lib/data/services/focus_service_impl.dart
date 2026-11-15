@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:todow/domain/models/enums.dart';
 import 'package:todow/domain/models/focus_session.dart';
+import 'package:todow/domain/models/focus_activity_template.dart';
 import 'package:todow/domain/models/task.dart';
 import 'package:todow/domain/repositories/focus_repository.dart';
 import 'package:todow/domain/services/app_blocking_service.dart';
@@ -35,6 +36,7 @@ class FocusServiceImpl implements FocusService {
     Task? task,
     required FocusPreset preset,
     Duration? duration,
+    FocusActivityTemplate? activity,
     List<String>? allowedApps,
   }) async {
     if (_current != null &&
@@ -50,11 +52,16 @@ class FocusServiceImpl implements FocusService {
       id: _uuid.v4(),
       taskId: task?.id,
       taskTitle: task?.title ?? 'Focus session',
-      preset: preset,
+      preset: activity?.visualPreset ?? preset,
       plannedDuration: duration ?? preset.defaultDuration,
       startedAt: DateTime.now(),
       status: FocusSessionStatus.running,
       allowedApps: apps,
+      activityTemplateId: activity?.id,
+      activityName: activity?.name,
+      activityGroup: activity?.groupName,
+      activitySubgroup: activity?.subgroupName,
+      mixedEnvironment: activity != null && activity.visualPreset == null,
     );
 
     _current = await _repo.saveSession(session);
@@ -101,6 +108,11 @@ class FocusServiceImpl implements FocusService {
         status: FocusSessionStatus.running,
         elapsedBeforePause: session.elapsedBeforePause,
         allowedApps: session.allowedApps,
+        activityTemplateId: session.activityTemplateId,
+        activityName: session.activityName,
+        activityGroup: session.activityGroup,
+        activitySubgroup: session.activitySubgroup,
+        mixedEnvironment: session.mixedEnvironment,
       ),
     );
     _controller.add(_current);

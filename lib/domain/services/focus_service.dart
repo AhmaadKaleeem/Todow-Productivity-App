@@ -1,5 +1,6 @@
 import 'package:todow/domain/models/enums.dart';
 import 'package:todow/domain/models/focus_session.dart';
+import 'package:todow/domain/models/focus_activity_template.dart';
 import 'package:todow/domain/models/task.dart';
 
 abstract class FocusService {
@@ -10,6 +11,7 @@ abstract class FocusService {
     Task? task,
     required FocusPreset preset,
     Duration? duration,
+    FocusActivityTemplate? activity,
     List<String>? allowedApps,
   });
 

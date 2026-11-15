@@ -1,17 +1,22 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/core/theme/app_colors.dart';
 import 'package:todow/core/utils/date_format.dart';
+import 'package:todow/data/local/focus_activity_store.dart';
 import 'package:todow/domain/models/enums.dart';
+import 'package:todow/domain/models/focus_activity.dart';
+import 'package:todow/domain/models/focus_activity_template.dart';
 import 'package:todow/domain/models/focus_session.dart';
+import 'package:todow/domain/models/focus_timeline.dart';
 import 'package:todow/domain/models/task.dart';
 import 'package:todow/presentation/providers/focus_providers.dart';
 import 'package:todow/presentation/providers/task_providers.dart';
 import 'package:todow/presentation/widgets/beautiful_back_button.dart';
 import 'package:todow/presentation/widgets/corner_arc_decor.dart';
+import 'package:todow/presentation/widgets/focus_activity_scene.dart';
+import 'package:uuid/uuid.dart';
 
 class FocusScreen extends ConsumerStatefulWidget {
   const FocusScreen({super.key});
@@ -20,9 +25,14 @@ class FocusScreen extends ConsumerStatefulWidget {
   ConsumerState<FocusScreen> createState() => _FocusScreenState();
 }
 
-class _FocusScreenState extends ConsumerState<FocusScreen> {
+class _FocusScreenState extends ConsumerState<FocusScreen>
+    with WidgetsBindingObserver {
   Timer? _ticker;
   FocusPreset _preset = FocusPreset.study;
+  FocusActivityCategory _activityCategory = FocusActivityCategory.learning;
+  final FocusActivityStore _activityStore = FocusActivityStore();
+  FocusActivitySettings _activitySettings = const FocusActivitySettings();
+  FocusActivityTemplate? _selectedTemplate;
   Duration _customDuration = const Duration(minutes: 50);
   String? _taskId;
   bool _zenMode = false;
@@ -32,30 +42,137 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _manualTimeController =
         TextEditingController(text: '${_customDuration.inMinutes}');
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
+    _loadActivitySettings();
   }
 
   @override
   void dispose() {
     _manualTimeController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final session = ref.read(focusSessionProvider);
+    final shouldRun = state == AppLifecycleState.resumed &&
+        session?.status == FocusSessionStatus.running &&
+        session!.remainingAt(DateTime.now()) > Duration.zero;
+    _syncTicker(enabled: shouldRun);
+    if (state == AppLifecycleState.resumed && mounted) setState(() {});
+  }
+
+  void _syncTicker({bool enabled = false}) {
+    final lifecycleState = WidgetsBinding.instance.lifecycleState;
+    if (!enabled ||
+        lifecycleState == AppLifecycleState.inactive ||
+        lifecycleState == AppLifecycleState.hidden ||
+        lifecycleState == AppLifecycleState.paused ||
+        lifecycleState == AppLifecycleState.detached) {
+      _ticker?.cancel();
+      _ticker = null;
+      return;
+    }
+    if (_ticker != null) return;
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   void _onPresetSelected(FocusPreset preset) {
     setState(() {
       _preset = preset;
-      _customDuration = preset.defaultDuration;
+      _selectedTemplate = null;
+      _customDuration =
+          Duration(minutes: _activitySettings.durationFor(preset));
+      _manualTimeController.text = '${_customDuration.inMinutes}';
+    });
+  }
+
+  Future<void> _loadActivitySettings() async {
+    final settings = await _activityStore.load();
+    if (!mounted) return;
+    setState(() {
+      _activitySettings = settings;
+      if (_selectedTemplate == null) {
+        _customDuration = Duration(minutes: settings.durationFor(_preset));
+        _manualTimeController.text = '${_customDuration.inMinutes}';
+      }
+    });
+  }
+
+  Future<void> _persistActivitySettings(
+    FocusActivitySettings settings,
+  ) async {
+    setState(() => _activitySettings = settings);
+    try {
+      await _activityStore.save(settings);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Could not save focus activity settings.')),
+      );
+    }
+  }
+
+  void _onTemplateSelected(FocusActivityTemplate activity) {
+    final visualPreset = activity.visualPreset ?? FocusPreset.deepWork;
+    setState(() {
+      _activityCategory = FocusActivityCategory.userActivities;
+      _selectedTemplate = activity;
+      _preset = visualPreset;
+      _customDuration = Duration(minutes: activity.defaultDurationMinutes);
+      _manualTimeController.text = '${_customDuration.inMinutes}';
+    });
+  }
+
+  Future<void> _saveSelectedDurationAsDefault() async {
+    final template = _selectedTemplate;
+    if (template != null) {
+      final updated = template.copyWith(
+        defaultDurationMinutes: _customDuration.inMinutes,
+      );
+      final activities = _activitySettings.customActivities
+          .map((item) => item.id == template.id ? updated : item)
+          .toList();
+      setState(() => _selectedTemplate = updated);
+      await _persistActivitySettings(
+        _activitySettings.copyWith(customActivities: activities),
+      );
+      return;
+    }
+    final defaults = Map<String, int>.from(_activitySettings.defaultDurations)
+      ..[_preset.name] = _customDuration.inMinutes;
+    await _persistActivitySettings(
+      _activitySettings.copyWith(defaultDurations: defaults),
+    );
+  }
+
+  void _onActivityCategorySelected(FocusActivityCategory category) {
+    if (category == FocusActivityCategory.userActivities) {
+      setState(() {
+        _activityCategory = category;
+        _selectedTemplate = null;
+      });
+      return;
+    }
+    final first = FocusActivityDefinition.inCategory(category).first.activity;
+    setState(() {
+      _activityCategory = category;
+      _selectedTemplate = null;
+      _preset = first;
+      _customDuration = Duration(minutes: _activitySettings.durationFor(first));
       _manualTimeController.text = '${_customDuration.inMinutes}';
     });
   }
 
   void _adjustDuration(int minutesDelta) {
-    final newMin = (_customDuration.inMinutes + minutesDelta).clamp(1, 180);
+    final newMin = (_customDuration.inMinutes + minutesDelta).clamp(1, 360);
     setState(() {
       _customDuration = Duration(minutes: newMin);
       _manualTimeController.text = '$newMin';
@@ -76,6 +193,10 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     final session = ref.watch(focusSessionProvider);
     final focus = ref.read(focusSessionProvider.notifier);
     final tasks = ref.watch(activeTasksProvider).valueOrNull ?? [];
+    _syncTicker(
+      enabled: session?.status == FocusSessionStatus.running &&
+          session!.remainingAt(DateTime.now()) > Duration.zero,
+    );
 
     if (session != null && _showWorkspace) {
       return _ActiveFocusView(
@@ -99,8 +220,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 _buildHeader(context),
                 Expanded(
                   child: ListView(
-                    padding: EdgeInsets.fromLTRB(
-                        20, 8, 20, session == null ? 100 : 32),
+                    padding: EdgeInsets.fromLTRB(20, 8, 20, 24),
                     children: [
                       if (session != null) ...[
                         _buildFocusCommandCard(
@@ -117,7 +237,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       ],
                       _buildSectionTitle(session != null
                           ? 'CHOOSE NEXT ENVIRONMENT'
-                          : 'STUDY DURATION'),
+                          : 'FOCUS ACTIVITY'),
                       const SizedBox(height: 10),
                       _buildPresetGrid(),
                       const SizedBox(height: 16),
@@ -132,17 +252,17 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
               ],
             ),
           ),
-          if (session == null)
-            Positioned(
-              left: 20,
-              right: 20,
-              bottom: 24,
-              child: SafeArea(
-                child: _buildStartButton(focus, tasks),
-              ),
-            ),
         ],
       ),
+      bottomNavigationBar: session == null
+          ? SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                child: _buildStartButton(focus, tasks),
+              ),
+            )
+          : null,
     );
   }
 
@@ -208,7 +328,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
 
             // Activity name + Task title
             Text(
-              session.preset.label,
+              session.activityName ?? session.preset.label,
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
@@ -424,87 +544,528 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
   }
 
   Widget _buildPresetGrid() {
-    const normalPresets = [
-      FocusPreset.study,
-      FocusPreset.coding,
-      FocusPreset.assignment,
-      FocusPreset.reading,
-      FocusPreset.deepWork,
-    ];
+    final isCustom = _activityCategory == FocusActivityCategory.userActivities;
+    final activities = isCustom
+        ? const <FocusActivityDefinition>[]
+        : FocusActivityDefinition.inCategory(_activityCategory);
+    final customActivities = _activitySettings.customActivities;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Normal activity chips ──────────────────────────────────────────
         Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: normalPresets.map((preset) {
-            final isSelected = _preset == preset;
-            return GestureDetector(
-              onTap: () => _onPresetSelected(preset),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? _presetAccentColor(preset).withValues(alpha: 0.12)
-                      : AppColors.surface,
-                  borderRadius: BorderRadius.circular(26),
-                  border: Border.all(
-                    color: isSelected
-                        ? _presetAccentColor(preset)
-                        : AppColors.divider,
-                    width: isSelected ? 1.5 : 1,
+          spacing: 8,
+          runSpacing: 8,
+          children: FocusActivityCategory.values.map((category) {
+            return ChoiceChip(
+              label: Text(category.label),
+              selected: _activityCategory == category,
+              onSelected: (_) => _onActivityCategorySelected(category),
+              showCheckmark: false,
+              visualDensity: VisualDensity.compact,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              shape: const StadiumBorder(),
+              selectedColor: AppColors.action.withValues(alpha: 0.14),
+              side: BorderSide(
+                color: _activityCategory == category
+                    ? AppColors.action
+                    : AppColors.divider,
+              ),
+              labelStyle: TextStyle(
+                color: _activityCategory == category
+                    ? AppColors.action
+                    : AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 12),
+        if (isCustom) ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () => _editCustomActivity(),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Create activity'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.action,
+                side: const BorderSide(color: AppColors.action),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (customActivities.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'Create your own activity, with an optional group and subgroup.',
+                style: TextStyle(color: AppColors.textSecondary, height: 1.4),
+              ),
+            )
+          else
+            ...customActivities.map(_buildCustomActivityOption),
+        ] else
+          ...activities.map(_buildActivityOption),
+        const SizedBox(height: 12),
+        FocusActivityScene(
+          preset: _preset,
+          timeline: FocusTimeline.preview,
+          isRunning: false,
+          compact: true,
+          showPhaseLabel: false,
+          activityLabel: _selectedTemplate?.name,
+          mixedEnvironment: _selectedTemplate?.visualPreset == null &&
+              _selectedTemplate != null,
+          accent: _selectedTemplate == null
+              ? null
+              : _templateAccent(_selectedTemplate!),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _selectedTemplate == null
+              ? FocusActivityDefinition.forActivity(_preset).description
+              : _selectedTemplate!.categoryLabel.isEmpty
+                  ? 'A custom activity in your saved collection.'
+                  : _selectedTemplate!.categoryLabel,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+            height: 1.4,
+          ),
+        ),
+        if (_selectedTemplate == null && _preset == FocusPreset.flow) ...[
+          const SizedBox(height: 10),
+          _buildUltradianCard(),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildActivityOption(FocusActivityDefinition definition) {
+    final preset = definition.activity;
+    final selected = _selectedTemplate == null && _preset == preset;
+    final gradient = _activityGradient(_activityCategory);
+    final workSurface = preset == FocusPreset.flow
+        ? 'FOCUS  ${_customDuration.inMinutes} MIN  ·  RECOVER  20 MIN'
+        : definition.workSurface;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 7),
+        child: InkWell(
+          onTap: () => _onPresetSelected(preset),
+          borderRadius: BorderRadius.circular(13),
+          child: AnimatedContainer(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+            decoration: BoxDecoration(
+              color: selected ? null : AppColors.surface,
+              gradient: selected ? gradient : null,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(
+                color: selected ? gradient.colors.first : AppColors.divider,
+                width: selected ? 1.4 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        preset.label,
+                        style: TextStyle(
+                          color:
+                              selected ? Colors.white : AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        workSurface,
+                        style: TextStyle(
+                          color: selected
+                              ? Colors.white70
+                              : AppColors.textSecondary,
+                          fontSize: 9,
+                          letterSpacing: 0.25,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
+                const SizedBox(width: 8),
+                Text(
+                  '${selected ? _customDuration.inMinutes : _activitySettings.durationFor(preset)}m',
+                  style: TextStyle(
+                    color: selected ? Colors.white : AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  selected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: selected ? Colors.white : AppColors.divider,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomActivityOption(FocusActivityTemplate activity) {
+    final selected = _selectedTemplate?.id == activity.id;
+    final gradient = _templateGradient(activity);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _onTemplateSelected(activity),
+          borderRadius: BorderRadius.circular(13),
+          child: AnimatedContainer(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 180),
+            padding: const EdgeInsets.fromLTRB(13, 10, 4, 10),
+            decoration: BoxDecoration(
+              color: selected ? null : AppColors.surface,
+              gradient: selected ? gradient : null,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(
+                color: selected ? gradient.colors.first : AppColors.divider,
+                width: selected ? 1.4 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        activity.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color:
+                              selected ? Colors.white : AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (activity.categoryLabel.isNotEmpty)
+                        Text(
+                          activity.categoryLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: selected
+                                ? Colors.white70
+                                : AppColors.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '${selected ? _customDuration.inMinutes : activity.defaultDurationMinutes}m',
+                  style: TextStyle(
+                    color: selected ? Colors.white : AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  tooltip: 'Activity options',
+                  icon: Icon(
+                    Icons.more_vert,
+                    color: selected ? Colors.white : AppColors.textSecondary,
+                  ),
+                  onSelected: (action) {
+                    if (action == 'edit') _editCustomActivity(activity);
+                    if (action == 'delete') _deleteCustomActivity(activity);
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit activity')),
+                    PopupMenuItem(
+                        value: 'delete', child: Text('Delete activity')),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editCustomActivity([
+    FocusActivityTemplate? existing,
+  ]) async {
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController(text: existing?.name ?? '');
+    final groupController =
+        TextEditingController(text: existing?.groupName ?? '');
+    final subgroupController =
+        TextEditingController(text: existing?.subgroupName ?? '');
+    final durationController = TextEditingController(
+      text: '${existing?.defaultDurationMinutes ?? 50}',
+    );
+    var visualPresetName = existing?.visualPresetName;
+
+    final saved = await showDialog<FocusActivityTemplate>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(existing == null ? 'Create activity' : 'Edit activity'),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      preset.label,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w600,
-                        color: isSelected
-                            ? _presetAccentColor(preset)
-                            : AppColors.textSecondary,
+                    TextFormField(
+                      controller: nameController,
+                      autofocus: true,
+                      maxLength: 40,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: const InputDecoration(
+                        labelText: 'Activity name',
+                        hintText: 'Workout',
+                      ),
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                              ? 'Enter an activity name'
+                              : null,
+                    ),
+                    TextFormField(
+                      controller: groupController,
+                      maxLength: 30,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Group (optional)',
+                        hintText: 'Fitness',
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${preset.defaultDuration.inMinutes}m',
+                    TextFormField(
+                      controller: subgroupController,
+                      maxLength: 30,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Subgroup (optional)',
+                        hintText: 'Strength, cardio',
+                      ),
+                    ),
+                    TextFormField(
+                      controller: durationController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Default duration (minutes)',
+                        hintText: '50',
+                      ),
+                      validator: (value) {
+                        final minutes = int.tryParse(value?.trim() ?? '');
+                        return minutes == null || minutes < 1 || minutes > 360
+                            ? 'Choose between 1 and 360 minutes'
+                            : null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String?>(
+                      value: visualPresetName,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Environment',
+                      ),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Auto match, or use mixed environment'),
+                        ),
+                        ...FocusPreset.values.map(
+                          (preset) => DropdownMenuItem<String?>(
+                            value: preset.name,
+                            child: Text(preset.label),
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) => setDialogState(
+                        () => visualPresetName = value,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Choose a matching activity scene, or use the mixed environment for activities without a close match.',
                       style: TextStyle(
+                        color: AppColors.textSecondary,
                         fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: isSelected
-                            ? _presetAccentColor(preset)
-                            : AppColors.textSecondary.withValues(alpha: 0.6),
+                        height: 1.35,
                       ),
                     ),
                   ],
                 ),
               ),
-            );
-          }).toList(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (!formKey.currentState!.validate()) return;
+                Navigator.pop(
+                  dialogContext,
+                  FocusActivityTemplate(
+                    id: existing?.id ?? const Uuid().v4(),
+                    name: nameController.text.trim(),
+                    groupName: _optionalValue(groupController.text),
+                    subgroupName: _optionalValue(subgroupController.text),
+                    defaultDurationMinutes:
+                        int.parse(durationController.text.trim()),
+                    visualPresetName: visualPresetName,
+                  ),
+                );
+              },
+              child: const Text('Save activity'),
+            ),
+          ],
         ),
-
-        // ── Ultradian full-row research card ──────────────────────────────
-        const SizedBox(height: 10),
-        _buildUltradianCard(),
-      ],
+      ),
     );
+    nameController.dispose();
+    groupController.dispose();
+    subgroupController.dispose();
+    durationController.dispose();
+    if (saved == null || !mounted) return;
+
+    final activities = [..._activitySettings.customActivities];
+    final index = activities.indexWhere((activity) => activity.id == saved.id);
+    if (index < 0) {
+      activities.add(saved);
+    } else {
+      activities[index] = saved;
+    }
+    await _persistActivitySettings(
+      _activitySettings.copyWith(customActivities: activities),
+    );
+    _onTemplateSelected(saved);
   }
 
-  // Ultradian rhythm card — full-width, student-friendly copy, visually distinct
+  Future<void> _deleteCustomActivity(FocusActivityTemplate activity) async {
+    final delete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete activity?'),
+        content: Text('“${activity.name}” will be removed from your list.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (delete != true || !mounted) return;
+    final activities = _activitySettings.customActivities
+        .where((item) => item.id != activity.id)
+        .toList();
+    await _persistActivitySettings(
+      _activitySettings.copyWith(customActivities: activities),
+    );
+    if (_selectedTemplate?.id == activity.id) {
+      _onActivityCategorySelected(FocusActivityCategory.userActivities);
+    }
+  }
+
+  LinearGradient _activityGradient(FocusActivityCategory category) {
+    final palette = switch (category) {
+      FocusActivityCategory.development ||
+      FocusActivityCategory.personalGrowth ||
+      FocusActivityCategory.userActivities =>
+        0,
+      FocusActivityCategory.learning || FocusActivityCategory.creativeWork => 1,
+      FocusActivityCategory.professionalWork ||
+      FocusActivityCategory.analyticalWork =>
+        2,
+    };
+    return _gradientPalette(palette);
+  }
+
+  LinearGradient _templateGradient(FocusActivityTemplate activity) {
+    final visualPreset = activity.visualPreset;
+    if (visualPreset != null) {
+      return _activityGradient(
+        FocusActivityDefinition.forActivity(visualPreset).category,
+      );
+    }
+    final group = (activity.groupName ?? activity.name).toLowerCase();
+    final palette = group.contains('art') ||
+            group.contains('creative') ||
+            group.contains('learn')
+        ? 1
+        : group.contains('work') ||
+                group.contains('finance') ||
+                group.contains('fitness') ||
+                group.contains('health')
+            ? 2
+            : 0;
+    return _gradientPalette(palette);
+  }
+
+  Color _templateAccent(FocusActivityTemplate activity) =>
+      _templateGradient(activity).colors.first;
+
+  LinearGradient _gradientPalette(int index) => switch (index) {
+        0 => const LinearGradient(
+            colors: [AppColors.action, Color(0xFF0284C7)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        1 => const LinearGradient(
+            colors: [AppColors.decorPink, AppColors.decorCoral],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        _ => const LinearGradient(
+            colors: [AppColors.attention, AppColors.decorCoral],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+      };
+
+  String? _optionalValue(String value) {
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
   Widget _buildUltradianCard() {
     final isSelected = _preset == FocusPreset.flow;
 
-    // 90 min focused work / 20 min real rest — matches the brain's natural
-    // alertness cycle (Kleitman BRAC, 1963). Used here without jargon.
     return GestureDetector(
       onTap: () => _onPresetSelected(FocusPreset.flow),
       child: AnimatedContainer(
@@ -551,7 +1112,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 ),
                 Row(
                   children: [
-                    _durationChip('90m', isSelected, work: true),
+                    _durationChip('${_customDuration.inMinutes}m', isSelected,
+                        work: true),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 5),
                       child: Text(
@@ -564,7 +1126,10 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                         ),
                       ),
                     ),
-                    _durationChip('20m break', isSelected, work: false),
+                    _durationChip(
+                        '${FocusPreset.flow.restDuration.inMinutes}m break',
+                        isSelected,
+                        work: false),
                   ],
                 ),
               ],
@@ -572,7 +1137,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
             const SizedBox(height: 10),
             // Plain-language benefit line for student reader
             Text(
-              'Your brain can only hold real focus for about 90 minutes before it needs a break. Push past that and you get slower, not sharper. Work for 90 minutes, then step away for 20. When you return, the next block feels like a fresh start.',
+              'A longer work block paired with a full break. Treat these durations as a starting point and adjust them to your task and energy.',
               style: TextStyle(
                 fontSize: 12.5,
                 height: 1.55,
@@ -586,11 +1151,11 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
             // Stat tiles — plain labels, no jargon
             Row(
               children: [
-                _statPill('90 min', 'Focus', isSelected),
+                _statPill('${_customDuration.inMinutes} min', 'Work block',
+                    isSelected),
                 const SizedBox(width: 8),
-                _statPill('20 min', 'Real break', isSelected),
-                const SizedBox(width: 8),
-                _statPill('4 blocks', 'Full day', isSelected),
+                _statPill('${FocusPreset.flow.restDuration.inMinutes} min',
+                    'Recovery', isSelected),
               ],
             ),
           ],
@@ -681,9 +1246,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.divider),
       ),
-      child: Row(
-        children: [
-          Column(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final summary = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
@@ -703,10 +1268,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 ),
               ),
             ],
-          ),
-          const Spacer(),
-          // Direct interactive stepper with inline editable duration
-          Row(
+          );
+          final stepper = Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               _durationButton(
@@ -714,61 +1277,47 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 onTap: () => _adjustDuration(-5),
               ),
               const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () {
-                  // Focus the text field when tapping the pill
-                  _manualTimeController.selection = TextSelection(
-                    baseOffset: 0,
-                    extentOffset: _manualTimeController.text.length,
-                  );
-                },
-                child: Container(
-                  width: 72,
-                  height: 38,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceElevated,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.divider),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 36,
-                        child: TextField(
-                          controller: _manualTimeController,
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
-                          ),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            filled: false,
-                            fillColor: Colors.transparent,
-                          ),
-                          onChanged: _setManualDuration,
+              Container(
+                width: 72,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.divider),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 36,
+                      child: TextField(
+                        controller: _manualTimeController,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
                         ),
-                      ),
-                      const SizedBox(width: 2),
-                      const Text(
-                        'm',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          border: InputBorder.none,
                         ),
+                        onChanged: _setManualDuration,
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 2),
+                    const Text(
+                      'm',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
@@ -777,8 +1326,36 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 onTap: () => _adjustDuration(5),
               ),
             ],
-          ),
-        ],
+          );
+          final saveDefault = TextButton.icon(
+            onPressed:
+                _activityCategory == FocusActivityCategory.userActivities &&
+                        _selectedTemplate == null
+                    ? null
+                    : _saveSelectedDurationAsDefault,
+            icon: const Icon(Icons.bookmark_add_outlined, size: 17),
+            label: const Text('Save duration as default'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.action,
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            ),
+          );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: summary),
+                  stepper,
+                ],
+              ),
+              if (constraints.maxWidth < 400)
+                saveDefault
+              else
+                Align(alignment: Alignment.centerRight, child: saveDefault),
+            ],
+          );
+        },
       ),
     );
   }
@@ -1043,6 +1620,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
             task: task,
             preset: _preset,
             duration: _customDuration,
+            activity: _selectedTemplate,
           );
           if (mounted) {
             setState(() {
@@ -1096,78 +1674,23 @@ class _ActiveFocusView extends StatefulWidget {
   State<_ActiveFocusView> createState() => _ActiveFocusViewState();
 }
 
-class _ActiveFocusViewState extends State<_ActiveFocusView>
-    with TickerProviderStateMixin {
-  late final AnimationController _breatheController;
-  late final AnimationController _loopController;
-
-  @override
-  void initState() {
-    super.initState();
-    _breatheController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 3600),
-    );
-    _loopController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 14),
-    );
-    if (widget.session.status == FocusSessionStatus.running) {
-      _breatheController.repeat(reverse: true);
-      _loopController.repeat();
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _syncMotion(MediaQuery.disableAnimationsOf(context));
-  }
-
-  @override
-  void didUpdateWidget(covariant _ActiveFocusView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final isRunning = widget.session.status == FocusSessionStatus.running;
-    _syncMotion(!isRunning || MediaQuery.disableAnimationsOf(context));
-  }
-
-  void _syncMotion(bool shouldStop) {
-    final isRunning = widget.session.status == FocusSessionStatus.running;
-    if (isRunning && !shouldStop) {
-      if (!_breatheController.isAnimating) {
-        _breatheController.repeat(reverse: true);
-      }
-      if (!_loopController.isAnimating) {
-        _loopController.repeat();
-      }
-    } else {
-      if (_breatheController.isAnimating) {
-        _breatheController.stop();
-      }
-      if (_loopController.isAnimating) {
-        _loopController.stop();
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _breatheController.dispose();
-    _loopController.dispose();
-    super.dispose();
-  }
-
+class _ActiveFocusViewState extends State<_ActiveFocusView> {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final progress = widget.session.progressAt(now).clamp(0.0, 1.0);
-    final isRunning = widget.session.status == FocusSessionStatus.running;
-    final isEnded = widget.remaining == Duration.zero;
-    final isEndingSoon = (widget.remaining.inSeconds <= 300 &&
-            widget.remaining > Duration.zero) ||
-        progress >= 0.88;
+    final timeline = FocusTimeline.fromSession(widget.session, now);
+    final progress = timeline.progress;
+    final isComplete = widget.remaining == Duration.zero;
+    final isRunning =
+        widget.session.status == FocusSessionStatus.running && !isComplete;
+    final isEndingSoon = !isComplete &&
+        ((widget.remaining.inSeconds <= 300 &&
+                widget.remaining > Duration.zero) ||
+            progress >= 0.88);
     final preset = widget.session.preset;
-    final accent = _presetAccentColor(preset);
+    final accent = widget.session.activityName == null
+        ? _presetAccentColor(preset)
+        : _sessionActivityAccent(widget.session);
     const bgColor = AppColors.background;
     const textPrimaryColor = AppColors.textPrimary;
     const textSecondaryColor = AppColors.textSecondary;
@@ -1177,24 +1700,14 @@ class _ActiveFocusViewState extends State<_ActiveFocusView>
       backgroundColor: bgColor,
       body: Stack(
         children: [
-          // A quiet work surface gives the session a place without competing
-          // with the countdown or the task title.
           Positioned.fill(
-            child: AnimatedBuilder(
-              animation:
-                  Listenable.merge([_breatheController, _loopController]),
-              builder: (context, _) {
-                return CustomPaint(
-                  painter: _FocusEnvironmentPainter(
-                    preset: preset,
-                    progress: progress,
-                    time: (progress + (_loopController.value * 0.02))
-                        .clamp(0.0, 1.0),
-                    isRunning: isRunning,
-                    isEndingSoon: isEndingSoon,
-                  ),
-                );
-              },
+            child: FocusActivityScene(
+              preset: preset,
+              timeline: timeline,
+              isRunning: isRunning,
+              activityLabel: widget.session.activityName,
+              mixedEnvironment: widget.session.mixedEnvironment,
+              accent: widget.session.activityName == null ? null : accent,
             ),
           ),
 
@@ -1213,18 +1726,22 @@ class _ActiveFocusViewState extends State<_ActiveFocusView>
                         backgroundColor: AppColors.surface,
                         foregroundColor: AppColors.textPrimary,
                       ),
-                      const Spacer(),
-                      Text(
-                        preset.label,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.2,
-                          color: textSecondaryColor,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          widget.session.activityName ?? preset.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                            color: textSecondaryColor,
+                          ),
                         ),
                       ),
-                      const Spacer(),
-                      const SizedBox(width: 44),
+                      const SizedBox(width: 12),
                     ],
                   ),
                 ),
@@ -1305,10 +1822,11 @@ class _ActiveFocusViewState extends State<_ActiveFocusView>
 
                           // Motivational prompt or paused status
                           Text(
-                            !isRunning
-                                ? 'Session paused'
-                                : _motivationMessage(
-                                    progress, isEnded, isEndingSoon, preset),
+                            isComplete
+                                ? _motivationMessage(timeline, preset)
+                                : isRunning
+                                    ? _motivationMessage(timeline, preset)
+                                    : 'Session paused',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 13,
@@ -1338,9 +1856,11 @@ class _ActiveFocusViewState extends State<_ActiveFocusView>
                         width: double.infinity,
                         height: 52,
                         child: FilledButton(
-                          onPressed: isRunning
-                              ? widget.focus.pause
-                              : widget.focus.resume,
+                          onPressed: isComplete
+                              ? null
+                              : isRunning
+                                  ? widget.focus.pause
+                                  : widget.focus.resume,
                           style: FilledButton.styleFrom(
                             backgroundColor:
                                 isRunning ? AppColors.surface : accent,
@@ -1356,7 +1876,11 @@ class _ActiveFocusViewState extends State<_ActiveFocusView>
                             ),
                           ),
                           child: Text(
-                            isRunning ? 'Pause Session' : 'Resume Session',
+                            isComplete
+                                ? 'Session complete'
+                                : isRunning
+                                    ? 'Pause Session'
+                                    : 'Resume Session',
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -1400,209 +1924,52 @@ class _ActiveFocusViewState extends State<_ActiveFocusView>
     );
   }
 
-  String _motivationMessage(
-      double progress, bool isEnded, bool isEndingSoon, FocusPreset preset) {
-    if (isEnded) return 'Session complete. Take a well-earned rest.';
-    if (isEndingSoon) {
-      if (preset == FocusPreset.flow) {
-        return 'Almost there. Your 20-minute break starts soon.';
-      }
-      return 'Final minutes. Bring this session to a clean completion.';
+  String _motivationMessage(FocusTimeline timeline, FocusPreset preset) {
+    if (timeline.phase == FocusAnimationPhase.completion) {
+      return preset == FocusPreset.flow
+          ? 'Work block complete. Begin your ${preset.restDuration.inMinutes}-minute recovery break.'
+          : 'Session complete. Take a well-earned rest.';
     }
-    if (preset == FocusPreset.flow) {
-      return '90 minutes of real focus, then 20 minutes of real rest. That is the rhythm your brain works best with.';
-    }
-    if (progress < 0.25) {
-      return 'Settle into the task. Remove distractions.';
-    }
-    if (progress < 0.50) {
-      return 'Steady flow. Keep this momentum.';
-    }
-    if (progress < 0.85) {
-      return 'Past the halfway mark. Keep your attention right here.';
-    }
-    return 'Approaching the finish. Stay focused.';
+    return switch (timeline.phase) {
+      FocusAnimationPhase.entry =>
+        'Arrive at the task. Let your attention settle.',
+      FocusAnimationPhase.settling => 'Choose one clear next step and begin.',
+      FocusAnimationPhase.deepFocus => 'Stay with the thread of work.',
+      FocusAnimationPhase.progression => 'Keep one goal in view.',
+      FocusAnimationPhase.finalPhase =>
+        'Find a good stopping point and leave a note for next time.',
+      FocusAnimationPhase.completion => 'Session complete.',
+    };
   }
-}
-
-class _FocusEnvironmentPainter extends CustomPainter {
-  const _FocusEnvironmentPainter({
-    required this.preset,
-    required this.progress,
-    required this.time,
-    required this.isRunning,
-    required this.isEndingSoon,
-  });
-
-  final FocusPreset preset;
-  final double progress;
-  final double time;
-  final bool isRunning;
-  final bool isEndingSoon;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final background = Paint()..color = AppColors.background;
-    canvas.drawRect(Offset.zero & size, background);
-
-    final deskTop = size.height * 0.77;
-    canvas.drawRect(
-      Rect.fromLTWH(0, deskTop, size.width, size.height - deskTop),
-      Paint()..color = const Color(0xFFE7DED0),
-    );
-
-    final window = RRect.fromRectAndRadius(
-      Rect.fromLTWH(size.width * 0.73, 92, size.width * 0.18, 170),
-      const Radius.circular(6),
-    );
-    canvas.drawRRect(window, Paint()..color = const Color(0xFFDCE8E9));
-    canvas.drawLine(
-      Offset(size.width * 0.82, 92),
-      Offset(size.width * 0.82, 262),
-      Paint()
-        ..color = const Color(0xFFB8C9C9)
-        ..strokeWidth = 1,
-    );
-
-    final quietObject = Paint()..color = const Color(0xFFD5CEC0);
-    final left = size.width * 0.08;
-    switch (preset) {
-      case FocusPreset.coding:
-        final monitor = RRect.fromRectAndRadius(
-          Rect.fromLTWH(left, size.height * 0.25, size.width * 0.25, 190),
-          const Radius.circular(8),
-        );
-        canvas.drawRRect(monitor, Paint()..color = const Color(0xFF34434A));
-        canvas.drawRRect(
-          monitor.deflate(12),
-          Paint()..color = const Color(0xFF53656A),
-        );
-        for (var i = 0; i < 7; i++) {
-          canvas.drawLine(
-            Offset(left + 28, size.height * 0.31 + i * 18),
-            Offset(
-                left + 120 + (i.isEven ? 28 : 0), size.height * 0.31 + i * 18),
-            Paint()
-              ..color = const Color(0xFFA8C5C6)
-              ..strokeWidth = 2,
-          );
-        }
-        canvas.drawRect(
-          Rect.fromLTWH(left + 92, size.height * 0.69, 40, 28),
-          quietObject,
-        );
-      case FocusPreset.reading:
-        final book = Path()
-          ..moveTo(left, size.height * 0.66)
-          ..lineTo(size.width * 0.34, size.height * 0.57)
-          ..lineTo(size.width * 0.55, size.height * 0.66)
-          ..lineTo(size.width * 0.34, size.height * 0.75)
-          ..close();
-        canvas.drawPath(book, Paint()..color = const Color(0xFFFFFCF2));
-        for (var i = 0; i < 5; i++) {
-          canvas.drawLine(
-            Offset(left + 30, size.height * 0.63 + i * 14),
-            Offset(size.width * 0.30, size.height * 0.60 + i * 14),
-            Paint()..color = const Color(0xFFD2C9B8),
-          );
-        }
-      case FocusPreset.assignment:
-        final paper =
-            Rect.fromLTWH(left, size.height * 0.23, size.width * 0.31, 260);
-        canvas.drawRect(paper, Paint()..color = const Color(0xFFFFFCF6));
-        for (var i = 0; i < 8; i++) {
-          final y = paper.top + 34 + i * 25;
-          canvas.drawLine(
-            Offset(paper.left + 42, y),
-            Offset(paper.right - 24, y),
-            Paint()..color = const Color(0xFFD8DFDA),
-          );
-          if (progress > (i + 1) / 8) {
-            canvas.drawLine(
-              Offset(paper.left + 14, y - 3),
-              Offset(paper.left + 18, y + 2),
-              Paint()
-                ..color = AppColors.action
-                ..strokeWidth = 2,
-            );
-            canvas.drawLine(
-              Offset(paper.left + 18, y + 2),
-              Offset(paper.left + 26, y - 7),
-              Paint()
-                ..color = AppColors.action
-                ..strokeWidth = 2,
-            );
-          }
-        }
-      case FocusPreset.study:
-        for (var i = 0; i < 3; i++) {
-          final x = left + i * 76;
-          canvas.drawRRect(
-            RRect.fromRectAndRadius(
-              Rect.fromLTWH(x, size.height * 0.31 + i * 12, 62, 92),
-              const Radius.circular(5),
-            ),
-            Paint()..color = const Color(0xFFFFFCF5),
-          );
-          canvas.drawLine(
-            Offset(x + 14, size.height * 0.37 + i * 12),
-            Offset(x + 48, size.height * 0.37 + i * 12),
-            Paint()..color = const Color(0xFFC9D2C7),
-          );
-        }
-      case FocusPreset.deepWork || FocusPreset.flow:
-        final notebook = RRect.fromRectAndRadius(
-          Rect.fromLTWH(left, size.height * 0.28, size.width * 0.28, 230),
-          const Radius.circular(6),
-        );
-        canvas.drawRRect(notebook, Paint()..color = const Color(0xFFFAF8EF));
-        for (var i = 0; i < 7; i++) {
-          canvas.drawLine(
-            Offset(left + 44, size.height * 0.36 + i * 22),
-            Offset(left + 188, size.height * 0.36 + i * 22),
-            Paint()..color = const Color(0xFFBFC0B2),
-          );
-        }
-    }
-
-    final progressX = size.width * (0.12 + progress * 0.46);
-    canvas.drawLine(
-      Offset(progressX, deskTop + 12),
-      Offset(progressX, deskTop + 34),
-      Paint()
-        ..color = isEndingSoon ? AppColors.attention : AppColors.action
-        ..strokeWidth = 3,
-    );
-
-    if (isRunning) {
-      final ambientX =
-          size.width * (0.12 + 0.08 * math.sin(time * math.pi * 2));
-      canvas.drawCircle(
-        Offset(ambientX, deskTop + 8),
-        3,
-        Paint()..color = const Color(0xFFB86B4B),
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _FocusEnvironmentPainter oldDelegate) =>
-      oldDelegate.preset != preset ||
-      oldDelegate.progress != progress ||
-      oldDelegate.time != time ||
-      oldDelegate.isRunning != isRunning ||
-      oldDelegate.isEndingSoon != isEndingSoon;
 }
 
 Color _presetAccentColor(FocusPreset preset) {
-  return switch (preset) {
-    FocusPreset.coding => AppColors.action,
-    FocusPreset.reading => AppColors.decorCoral,
-    FocusPreset.study => AppColors.decorNavy,
-    FocusPreset.deepWork => AppColors.attention,
-    FocusPreset.assignment => AppColors.decorPink,
-    FocusPreset.flow => const Color(0xFF10B981),
+  return switch (FocusActivityDefinition.forActivity(preset).category) {
+    FocusActivityCategory.development => AppColors.action,
+    FocusActivityCategory.learning => AppColors.decorNavy,
+    FocusActivityCategory.creativeWork => AppColors.decorPink,
+    FocusActivityCategory.professionalWork => AppColors.attention,
+    FocusActivityCategory.personalGrowth => AppColors.decorCoral,
+    FocusActivityCategory.analyticalWork => const Color(0xFF43877F),
+    FocusActivityCategory.userActivities => AppColors.action,
   };
+}
+
+Color _sessionActivityAccent(FocusSession session) {
+  final group =
+      (session.activityGroup ?? session.activityName ?? '').toLowerCase();
+  if (group.contains('creative') ||
+      group.contains('art') ||
+      group.contains('learn')) {
+    return AppColors.decorPink;
+  }
+  if (group.contains('work') ||
+      group.contains('finance') ||
+      group.contains('fitness') ||
+      group.contains('health')) {
+    return AppColors.attention;
+  }
+  return AppColors.action;
 }
 
 String _formatRemainingTime(Duration duration) {

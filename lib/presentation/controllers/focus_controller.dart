@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:todow/domain/models/enums.dart';
 import 'package:todow/domain/models/focus_session.dart';
+import 'package:todow/domain/models/focus_activity_template.dart';
 import 'package:todow/domain/models/task.dart';
 import 'package:todow/domain/services/focus_service.dart';
 
@@ -30,11 +31,13 @@ class FocusController extends ChangeNotifier {
     Task? task,
     required FocusPreset preset,
     Duration? duration,
+    FocusActivityTemplate? activity,
   }) async {
     await _service.startSession(
       task: task,
       preset: preset,
       duration: duration,
+      activity: activity,
     );
   }
 

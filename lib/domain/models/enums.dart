@@ -18,7 +18,40 @@ enum ReminderStatus { pending, fired, snoozed, handled, cancelled }
 
 enum ReminderKind { relative, absolute, atDeadline, daily, constant }
 
-enum FocusPreset { study, coding, assignment, reading, deepWork, flow }
+enum FocusPreset {
+  study,
+  coding,
+  assignment,
+  reading,
+  deepWork,
+  flow,
+  debugging,
+  architecture,
+  systemDesign,
+  aiMlResearch,
+  databaseEngineering,
+  lecture,
+  examPreparation,
+  mathematics,
+  researchPapers,
+  writing,
+  designing,
+  drawing,
+  musicComposition,
+  brainstorming,
+  meeting,
+  planning,
+  documentation,
+  projectManagement,
+  journaling,
+  languageLearning,
+  meditation,
+  reflection,
+  dataAnalysis,
+  problemSolving,
+  financialAnalysis,
+  technicalResearch,
+}
 
 enum FocusSessionStatus { idle, running, paused, ended }
 
@@ -99,6 +132,58 @@ extension FocusPresetExt on FocusPreset {
         return 'Deep Work';
       case FocusPreset.flow:
         return 'Ultradian';
+      case FocusPreset.debugging:
+        return 'Debugging';
+      case FocusPreset.architecture:
+        return 'Software Architecture';
+      case FocusPreset.systemDesign:
+        return 'System Design';
+      case FocusPreset.aiMlResearch:
+        return 'AI / ML Research';
+      case FocusPreset.databaseEngineering:
+        return 'Database Engineering';
+      case FocusPreset.lecture:
+        return 'Lecture';
+      case FocusPreset.examPreparation:
+        return 'Exam Preparation';
+      case FocusPreset.mathematics:
+        return 'Mathematics';
+      case FocusPreset.researchPapers:
+        return 'Research Papers';
+      case FocusPreset.writing:
+        return 'Writing';
+      case FocusPreset.designing:
+        return 'Designing';
+      case FocusPreset.drawing:
+        return 'Drawing';
+      case FocusPreset.musicComposition:
+        return 'Music Composition';
+      case FocusPreset.brainstorming:
+        return 'Brainstorming';
+      case FocusPreset.meeting:
+        return 'Meeting';
+      case FocusPreset.planning:
+        return 'Planning';
+      case FocusPreset.documentation:
+        return 'Documentation';
+      case FocusPreset.projectManagement:
+        return 'Project Management';
+      case FocusPreset.journaling:
+        return 'Journaling';
+      case FocusPreset.languageLearning:
+        return 'Language Learning';
+      case FocusPreset.meditation:
+        return 'Meditation';
+      case FocusPreset.reflection:
+        return 'Reflection';
+      case FocusPreset.dataAnalysis:
+        return 'Data Analysis';
+      case FocusPreset.problemSolving:
+        return 'Problem Solving';
+      case FocusPreset.financialAnalysis:
+        return 'Financial Analysis';
+      case FocusPreset.technicalResearch:
+        return 'Technical Research';
     }
   }
 
@@ -116,6 +201,35 @@ extension FocusPresetExt on FocusPreset {
         return const Duration(minutes: 120);
       case FocusPreset.flow:
         return const Duration(minutes: 90);
+      case FocusPreset.debugging:
+      case FocusPreset.architecture:
+      case FocusPreset.systemDesign:
+      case FocusPreset.aiMlResearch:
+      case FocusPreset.databaseEngineering:
+      case FocusPreset.lecture:
+      case FocusPreset.researchPapers:
+      case FocusPreset.writing:
+      case FocusPreset.designing:
+      case FocusPreset.drawing:
+      case FocusPreset.musicComposition:
+      case FocusPreset.brainstorming:
+      case FocusPreset.meeting:
+      case FocusPreset.planning:
+      case FocusPreset.documentation:
+      case FocusPreset.projectManagement:
+      case FocusPreset.journaling:
+      case FocusPreset.languageLearning:
+      case FocusPreset.reflection:
+      case FocusPreset.dataAnalysis:
+      case FocusPreset.problemSolving:
+      case FocusPreset.financialAnalysis:
+      case FocusPreset.technicalResearch:
+        return const Duration(minutes: 50);
+      case FocusPreset.examPreparation:
+      case FocusPreset.mathematics:
+        return const Duration(minutes: 45);
+      case FocusPreset.meditation:
+        return const Duration(minutes: 20);
     }
   }
 

@@ -46,7 +46,9 @@ Future<void> createDatabaseSchema(Database db, int version) async {
     preset TEXT NOT NULL, planned_seconds INTEGER NOT NULL,
     started_at TEXT NOT NULL, status TEXT NOT NULL, paused_at TEXT,
     ended_at TEXT, elapsed_before_pause_seconds INTEGER NOT NULL DEFAULT 0,
-    allowed_apps TEXT NOT NULL DEFAULT '')''');
+    allowed_apps TEXT NOT NULL DEFAULT '', activity_template_id TEXT,
+    activity_name TEXT, activity_group TEXT, activity_subgroup TEXT,
+    mixed_environment INTEGER NOT NULL DEFAULT 0)''');
   await db.execute('CREATE INDEX idx_tasks_status ON tasks(status)');
   await db.execute('CREATE INDEX idx_tasks_due_at ON tasks(due_at)');
   await db.execute('CREATE INDEX idx_tasks_topic_id ON tasks(topic_id)');
@@ -151,5 +153,17 @@ Future<void> upgradeDatabaseSchema(
   }
   if (oldVersion < 10) {
     await db.execute('ALTER TABLE tasks ADD COLUMN subject TEXT');
+  }
+  if (oldVersion < 11) {
+    await db.execute(
+        'ALTER TABLE focus_sessions ADD COLUMN activity_template_id TEXT');
+    await db
+        .execute('ALTER TABLE focus_sessions ADD COLUMN activity_name TEXT');
+    await db
+        .execute('ALTER TABLE focus_sessions ADD COLUMN activity_group TEXT');
+    await db.execute(
+        'ALTER TABLE focus_sessions ADD COLUMN activity_subgroup TEXT');
+    await db.execute(
+        'ALTER TABLE focus_sessions ADD COLUMN mixed_environment INTEGER NOT NULL DEFAULT 0');
   }
 }

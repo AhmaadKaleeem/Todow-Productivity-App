@@ -13,6 +13,11 @@ class FocusSession {
     this.endedAt,
     this.elapsedBeforePause = Duration.zero,
     this.allowedApps = const [],
+    this.activityTemplateId,
+    this.activityName,
+    this.activityGroup,
+    this.activitySubgroup,
+    this.mixedEnvironment = false,
   });
 
   final String id;
@@ -26,6 +31,11 @@ class FocusSession {
   final DateTime? endedAt;
   final Duration elapsedBeforePause;
   final List<String> allowedApps;
+  final String? activityTemplateId;
+  final String? activityName;
+  final String? activityGroup;
+  final String? activitySubgroup;
+  final bool mixedEnvironment;
 
   Duration elapsedAt(DateTime now) {
     if (status == FocusSessionStatus.paused) {
@@ -55,6 +65,11 @@ class FocusSession {
     DateTime? endedAt,
     Duration? elapsedBeforePause,
     List<String>? allowedApps,
+    String? activityTemplateId,
+    String? activityName,
+    String? activityGroup,
+    String? activitySubgroup,
+    bool? mixedEnvironment,
   }) {
     return FocusSession(
       id: id,
@@ -68,6 +83,11 @@ class FocusSession {
       endedAt: endedAt ?? this.endedAt,
       elapsedBeforePause: elapsedBeforePause ?? this.elapsedBeforePause,
       allowedApps: allowedApps ?? this.allowedApps,
+      activityTemplateId: activityTemplateId ?? this.activityTemplateId,
+      activityName: activityName ?? this.activityName,
+      activityGroup: activityGroup ?? this.activityGroup,
+      activitySubgroup: activitySubgroup ?? this.activitySubgroup,
+      mixedEnvironment: mixedEnvironment ?? this.mixedEnvironment,
     );
   }
 
@@ -83,6 +103,11 @@ class FocusSession {
         'ended_at': endedAt?.toIso8601String(),
         'elapsed_before_pause_seconds': elapsedBeforePause.inSeconds,
         'allowed_apps': allowedApps.join(','),
+        'activity_template_id': activityTemplateId,
+        'activity_name': activityName,
+        'activity_group': activityGroup,
+        'activity_subgroup': activitySubgroup,
+        'mixed_environment': mixedEnvironment ? 1 : 0,
       };
 
   factory FocusSession.fromMap(Map<String, Object?> map) => FocusSession(
@@ -106,5 +131,10 @@ class FocusSession {
             .split(',')
             .where((s) => s.isNotEmpty)
             .toList(),
+        activityTemplateId: map['activity_template_id'] as String?,
+        activityName: map['activity_name'] as String?,
+        activityGroup: map['activity_group'] as String?,
+        activitySubgroup: map['activity_subgroup'] as String?,
+        mixedEnvironment: (map['mixed_environment'] as int? ?? 0) != 0,
       );
 }

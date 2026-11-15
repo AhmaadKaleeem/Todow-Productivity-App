@@ -76,8 +76,10 @@ The Home screen keeps its three summary cards at the top, then brings today's du
 
 ### FR-08 Focus Mode
 Task-linked sessions, timer, pause/resume/end, presets, basic distraction controls.
-Includes immersive full-screen dynamic environments (Coding terminal, Reading folio, Academic study notebook, Architectural deep work grid, Delive rable checklist, and Ultradian cycle) that dynamically adapt as time progresses. Each mode has its own selected-state accent and animation language, with a fixed action area that keeps pause/resume and End session visible on compact screens.
-Features the research-based **Ultradian** preset of 90 minutes of focused work followed by 20 minutes of recovery, matching the natural human alertness rhythm.
+Focus activities cover development, learning, creative work, professional work, personal growth, and analytical work. Each activity has a purpose-built environment that uses the visual language and artifacts of that work.
+People can save custom activities with optional groups and subgroups, choose a matching environment or use an automatic mixed workspace, and set default durations for custom or built-in activities.
+Session environments progress through entry, settling, deep focus, progression, closing, and completion phases in proportion to the selected duration. Elapsed time is derived from session state so the environment catches up after the app returns from the background; pause freezes its progression. Reduced-motion settings remove spatial transitions.
+The Ultradian preset pairs a 90-minute work block with a 20-minute recovery period as an adjustable planning option, not a fixed limit on attention.
 Rest-time ambient music and soundscapes planned for upcoming release to provide selectable relaxation tracks during the 20-minute break.
 
 #### FR-08.v2 Focus Shield App Blocking (Planned)

@@ -2,20 +2,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/core/providers/service_providers.dart';
 import 'package:todow/domain/models/enums.dart';
 import 'package:todow/domain/models/focus_session.dart';
+import 'package:todow/domain/models/focus_activity_template.dart';
 import 'package:todow/domain/models/task.dart';
 
 class FocusNotifier extends Notifier<FocusSession?> {
   @override
   FocusSession? build() {
     final service = ref.watch(focusServiceProvider);
-    
+
     // Subscribe to stream updates
     final subscription = service.sessionStream.listen((session) {
       state = session;
     });
-    
+
     ref.onDispose(() => subscription.cancel());
-    
+
     // Initial state
     return service.currentSession;
   }
@@ -28,12 +29,14 @@ class FocusNotifier extends Notifier<FocusSession?> {
     Task? task,
     required FocusPreset preset,
     Duration? duration,
+    FocusActivityTemplate? activity,
   }) async {
     await ref.read(focusServiceProvider).startSession(
-      task: task,
-      preset: preset,
-      duration: duration,
-    );
+          task: task,
+          preset: preset,
+          duration: duration,
+          activity: activity,
+        );
   }
 
   Future<void> pause() async {

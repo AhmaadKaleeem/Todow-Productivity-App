@@ -19,10 +19,10 @@ Todow is a local-first planner for study, work, and personal tasks. Create tasks
 - **Today dashboard** View overdue and upcoming tasks, active reminders, focus sessions, and today's classes.
 - **Roadmaps** Organize work into ordered Topics with tasks and progress. Import and export roadmaps as CSV or Excel files.
 - **Timetable** Add weekly university classes and personal plans. Import schedules from CSV or Excel, or scan a schedule image into an editable draft.
-- **Focus mode** Run a task-linked timer with pause, resume, and end controls. Focus sessions save their state between app launches.
+- **Focus mode** Choose activity-specific environments for development, learning, creative work, professional work, personal growth, and analysis. Each scene progresses in proportion to the selected session duration and stays synchronized across pauses and app backgrounding. Save custom activities with optional groups and subgroups, use an automatically matched or mixed environment, and set default durations for built-in or custom activities.
 
 ### In Progress
-- **Rest-Time Ambient Music** Built-in restorative audio soundscapes and rest music during the 10-minute break interval, selectable by the user to optimize cognitive recovery.
+- **Rest-Time Ambient Music** Built-in restorative audio soundscapes and rest music during the 20-minute recovery interval, selectable by the user.
 
 ### Future Roadmap
 - **Google Accounts** Multiple accounts, Gmail to tasks, and Google Calendar sync.
@@ -30,9 +30,9 @@ Todow is a local-first planner for study, work, and personal tasks. Create tasks
 - **Sync & Backup** Sync across devices, automatic backups, and offline changes supported.
 - **Focus Improvements** Android app blocking, allowed apps during study, and focus history.
 - **Advanced Planning** Recurring tasks, weekly/monthly planning, goal tracking, milestone dependencies, and flexible reminder rules.
-- **Profession and work categories** Choose a built-in category or enter a custom profession or work type. A future shared cloud catalog can make new categories available for other users to select.
+- **Profession and work categories** A future shared catalog can make custom professions and work types available to other users. Personal focus activity templates can already be created and saved on the device.
 
-Tasks, reminders, and schedules are stored on your device. Todow's core features work offline.
+Tasks, reminders, schedules, focus sessions, and custom focus activities are stored on your device. Todow's core features work offline.
 
 ## Setup
 
