@@ -1,134 +1,62 @@
-# Student Productivity App - MVP 0.1
+# Product Specification
 
-## Core Product Loop
-CAPTURE → ORGANIZE → SCHEDULE → REMIND → FOCUS → COMPLETE
+Todow helps people organize tasks around deadlines, weekly schedules, and focused work. It is local-first and supports study, work, and personal planning without an account.
 
-## Product Principles
+## Product principles
 
-## Reminders and alerts
+- Core planning works offline and stores user data on the device.
+- Users control task dates, reminders, and focus activity settings.
+- Imported content is editable and reviewed before it is saved.
+- Tasks remain usable across the home list, timetable, roadmaps, and focus sessions.
 
-Task reminders are persisted locally and scheduled through the native Android
-notification/alarm receiver, so scheduled delivery is independent of the
-Flutter screen or foreground session. Reminder plans support normal,
-assignment, critical, daily, and custom schedules, with selectable silent,
-beep, sound/vibration, full-screen, and repeated alert behavior. New task
-reminders start off. Turning them on without a due date selects the normal
-schedule and opens date and time selection; reminders become active once a due
-time is set. Notifications feature high-contrast typography, brand Azure
-accent styling, dynamic BigText
-expansion for multi-line details, and human-readable timing labels ("Due in 15 minutes",
-"Deadline reached"). Mobile alarms feature continuous foreground service audio playback
-on STREAM_ALARM, custom vibration cadences, and lock-screen full-screen overlays
-that persist through notification drawer interactions until dismissed or snoozed
-for 10 minutes. Android
-notification and exact-alarm permissions remain operating-system controls;
-when exact alarms are unavailable, the app falls back to inexact idle-safe
-scheduling rather than silently dropping the reminder. Principles
-- **Personal-first**: Useful to one student without requiring an account, server, or cloud service.
-- **Local-first**: Core functionality works offline.
-- **Reminder reliability**: Reminders are a core product capability, not an optional notification layer.
-- **Human control**: Imported/extracted info must be reviewable and editable before saving.
-- **Simple first**: Solve the core student workflow without unrelated integrations.
-- **Extendable architecture**: Support future integrations via adapters.
+## Current behavior
 
-## Requirements
+### Tasks
 
-### FR-01 Task Management
-Create, edit, complete, reopen, delete, archive. Title, description, priority, start date/time, due date/time, tags/categories, subtasks. Search, filter, sort.
-Quick duplicate. Clone complex recurring tasks instantly so you spend less time retyping and more time executing.
+Users can create, edit, complete, reopen, archive, duplicate, and delete tasks. Tasks support descriptions, dates, priorities, categories, tags, subtasks, attachments, and reminders. The task list supports search, filters, sorting, manual ordering, and task insertion.
 
-#### FR-01.v2 Advanced Task Interactions (Shipped)
-Managing your workload should feel fluid and instant. We built three tactile interactions into the active task list so you can organize your day without opening a single menu.
+### Reminders and alarms
 
-Drag to reorder
-Grab any task row and move it to the exact spot you want. The app writes the new order directly to the database so your plan survives a restart. You spend zero time manually numbering priorities and more time actually working.
+Each task can have multiple reminder times. Users can choose a preset, add custom times, repeat a reminder daily, and configure alert behavior. Reminders are off until enabled. Completing or deleting a task cancels its pending reminders.
 
-Swipe to act
-Swipe a row left to reveal solid floating buttons for Complete and Delete. One smooth gesture takes care of the action without annoying confirmation popups. You clear out finished work faster and keep the list clean.
+The available presets are:
 
-Double tap to insert
-Double tap the space between any two tasks to drop a text field exactly there. Type a title and hit Enter to create the next step right where you need it. This keeps your flow unbroken when you remember a missing step.
+- Normal: one day before and at the deadline
+- Assignment: two days before, one day before, three hours before, and thirty minutes before
+- Critical: three days, two days, one day, three hours, one hour, thirty minutes before, and at the deadline
 
-Splash screen skip
-Returning users see a personalized greeting and can tap a single button to skip the animation. You get straight to your task list without waiting. New users get a smooth introduction that asks for their name right away so they feel at home.
+On Android, alarm mode can show a full-screen alarm with the current time and task details. Users can dismiss it, snooze for ten minutes, or open Todow. Exact alarms and full-screen display depend on Android permissions and settings.
 
-Navigation drawer
-Swipe right to open the cream navigation drawer and jump to Home, Tasks, Focus, Timetable, or Roadmaps. Each compact rounded pill keeps its own color identity, with a soft destination gradient on the selected section. A small Azure wave draws in below the menu, followed by the Todow in-app wordmark and version.
+### Home and schedules
 
+Home summarizes overdue and upcoming tasks, reminders, focus sessions, and today's schedule. The timetable keeps the primary weekly schedule separate from a second schedule for personal plans or other commitments. Entries can repeat weekly or use a single date, and can link to tasks.
 
+Users can add timetable entries manually or import a CSV, spreadsheet, or schedule image. Imports remain editable drafts until the user confirms them. Confirmed rows are saved together so a failed import does not leave a partial schedule.
 
-### FR-02 Attachments
-Support local attachments (images, PDFs, local files). Attach, open, remove. SQLite stores metadata, local storage holds files.
+### Focus sessions
 
-### FR-03 & FR-04 Reminders & Presets
-Multiple reminders per task (absolute or relative). Snooze, reschedule. Completing task cancels pending reminders.
-The reminder editor shows whether reminders are on and the next scheduled time first. Users can choose a schedule, add or edit individual reminder times, repeat daily, set quiet hours, and choose how alerts behave.
-On Android, reminders use exact alarms to notify at their scheduled time while Todow is in the background. Alarm mode can ring over the lock screen when Android's alarm and full-screen notification permissions are enabled.
-The full-screen alarm keeps the device lock screen in place and centers the live local time, date, and task being reminded. Snooze is the prominent action; Dismiss remains distinct, and Open Todow stays available as a secondary route. The same controls remain available when the device is already unlocked.
-On first launch, Todow explains that notification access is used for task reminders before opening the operating-system permission prompt. The full-screen prompt can be skipped, and the explanation is shown once.
-Presets:
-- NORMAL: 1 day before + deadline
-- ASSIGNMENT: 2 days before + 1 day before + 3 hours before + 30 minutes before
-- CRITICAL: 3 days, 2 days, 1 day, 3h, 1h, 30m, deadline
+Users choose a focus activity, set a duration, and can link a task. Sessions can be paused, resumed, or ended. Custom activities and their optional groups and default durations are stored locally. The full-screen timer shows the remaining time and an exit control.
 
-### FR-05 Constant Reminder
-When enabled, continues reminding according to repeat policy until completed, snoozed, or explicitly stopped.
+### Roadmaps
 
-### FR-07 Today
-Aggregates overdue, today's, upcoming, active reminders, timetable entries, and active focus. Not an analytics dashboard.
-Home highlights the two categories with the most tasks and shows completed and total counts. Create a task in Daily Tasks or another category and its card appears automatically, so the home overview reflects the work you actually have. Personal Notes and Study fill empty slots when fewer than two task categories have tasks; Inbox and roadmap tasks are excluded.
-The Home screen keeps its three summary cards at the top, then brings today's due tasks and classes into view. Due tasks are ordered by time and can be completed from the list. Today's classes follow the weekly timetable in time order, with the current or next class called out. The class list stays compact when the day is busy, and View timetable opens the full weekly schedule. When there are no classes, a short empty state takes the place of the list.
+Roadmaps organize larger goals into ordered topics with tasks and progress. Tasks keep their own schedules. Roadmaps can be imported from or exported to CSV and Excel files. Imported rows are checked before they are saved.
 
-### FR-08 Focus Mode
-Task-linked sessions, timer, pause/resume/end, presets, basic distraction controls.
-Focus activities use five compact filters: Technical (development and analysis), Learning, Creative, Work, and Personal. Each activity has a purpose-built environment that uses the visual language and artifacts of that work. Saved personal activities stay in a separate My activities view.
-People can save custom activities with optional groups and subgroups, choose a matching environment or use an automatic mixed workspace, and set default durations for custom or built-in activities.
-Session environments progress through entry, settling, deep focus, progression, closing, and completion phases in proportion to the selected duration. Elapsed time is derived from session state so the environment catches up after the app returns from the background; pause freezes its progression. Reduced-motion settings remove spatial transitions.
-The Ultradian preset pairs a 90-minute work block with a 20-minute recovery period as an adjustable planning option, not a fixed limit on attention.
-Rest-time ambient music and soundscapes planned for upcoming release to provide selectable relaxation tracks during the 20-minute break.
+### Local data
 
-#### FR-08.v2 Focus Shield App Blocking (Planned)
-During an active Focus session, Todow will request Android Usage Access permission to monitor and optionally block distracting apps.
+Task data, schedules, reminders, focus sessions, roadmaps, custom focus activities, and attachment metadata are stored locally. Attachment files are stored on the device. Core planning features do not require an account or network connection.
 
-**Default behavior (opt-in)**
-- All social media apps (Instagram, TikTok, Twitter/X, Snapchat, YouTube Shorts, Facebook, WhatsApp Status, Reddit, and similar apps) are blocked by default when a session starts.
-- When a blocked app is opened, an overlay appears with a warning that social apps can steal focus while a session is active.
-- The user can choose to dismiss and use the app for a limited window of 2 minutes, after which the reminder re-appears.
+## Data formats
 
-**User controls**
-- Before starting a session the user can allow-list specific apps as exceptions that should remain accessible during focus, such as a calculator, reference book, or direct messaging with a study partner.
-- The block list is editable in Settings. Any app can be moved to the exception list permanently.
-- Focus Shield can be fully disabled per-session or globally in Settings.
+Timetable imports accept `name`, `instructor`, `day`, `start_time`, `end_time`, and `room`. Legacy entry-name headers `course`, `course_name`, and `class` are also accepted.
 
-**Permission flow**
-- On first use, Todow explains that Usage Access is requested for distraction control and directs the user to the system settings page.
-- If the permission is denied, Focus Shield is silently disabled and no session functionality is affected.
-- No app usage data ever leaves the device. The permission is used solely to detect foreground apps and show the overlay.
+Roadmap imports accept `roadmap_title`, `roadmap_description`, `topic_title`, `topic_description`, `topic_order`, `topic_status`, `task_title`, `task_description`, `due_date`, `due_time`, `priority`, `task_status`, and `reminder`.
 
-### FR-09, FR-10, FR-11 Timetable
-Keep University classes and Personal plans separate. University entries repeat weekly by default. Personal is an independent planner for weekly activities and one-time dated events; users can copy university classes into it, then edit or delete those copies without changing the University schedule. Personal items can link to existing tasks, tasks (including roadmap tasks) can be placed on the personal timetable, and activities can create linked tasks. Switch between a full week and one day, return to today, and edit or remove entries. In the one-day view, a live timer tracks the current class. Finished classes are struck through like completed tasks. When all classes for the day end, the view shifts to show the next day's schedule. The current or next class is always highlighted, updating instantly if the timetable is edited. Home combines both schedules under Today's schedule and labels each item with University or the saved Personal profile name.
-The Personal schedule can be named for an office job, freelance work, personal commitments, or a custom profile. Its selected name and description are saved on the device, while entries remain in the existing Personal timetable.
-Add classes by hand or import CSV and Excel. Check and edit every imported row before confirming; Todow saves the confirmed set in one local transaction. Scan an image from the camera or gallery to create an editable draft. Course, day, and time are read from the image when clear; review the instructor and room as well before saving. If three scans cannot read it, switch to CSV or Excel, or copy a prompt to ask an external AI assistant to format the image. That optional step stays outside Todow, and the resulting file is still reviewed here before it is saved.
+## Quality requirements
 
-### FR-12 & FR-13 Roadmaps
-Roadmaps turn long-term work into a clear route through ordered Topics. Alternating stage cards connect along a visible path, with completed work settled, the current stage emphasized, and upcoming Topics easy to scan. Each stage shows task progress at a glance. Expand tasks in one Topic at a time to keep the route focused, or switch to By date to browse today's, this week's, upcoming, all scheduled work, a custom date range, or selected days grouped under their Topic. Edit a Roadmap from its card options or its detail menu; rename a Topic from its options. Tasks keep their own schedules while belonging to one Topic; complete or reopen a task from its circle, open it to edit, add a task directly to a stage, or delete it from the stage. Delete a Topic from its options; its tasks remain safely in Todow, detached but intact. Create a Roadmap by hand or import or export it as CSV or Excel. The import screen provides a downloadable CSV sample with multiple Topics and tasks. Replace its example rows or omit optional columns such as descriptions, due dates, priority, status, and reminders. Todow checks every imported row before a single SQLite transaction, so a bad file never leaves behind a half-imported plan. Reorder Roadmaps with the drag handle or move controls. Delete a Roadmap from its options menu; its tasks remain safely in Todow, detached but intact. Everything is saved locally in SQLite, so each plan remains available offline.
+- Reminder schedules can be rebuilt from persisted task and reminder state after app startup.
+- Completing or deleting a task does not leave an active reminder behind.
+- Imported timetable and roadmap data is validated before persistence.
+- Confirmed timetable imports are saved atomically.
+- Domain rules remain testable without Flutter widgets.
 
-### FR-14 Smart Flexible Reminders
-Reminders that adapt to the schedule, not just the clock. When enabled for a task, Todow defers the reminder if the student is in a scheduled university class, waiting for a suitable time window within their preferred availability hours before the task deadline. Includes smart snooze and strict deadline protection (reminders are never deferred beyond the deadline). Regular fixed-time reminders remain available and are the default; flexible reminders are an additional explicit opt-in.
-
-## CSV Specification
-**Timetable CSV and Excel Columns**: `course,instructor,day,start_time,end_time,room`. Use one row per class and a weekday name or abbreviation.
-**Roadmap CSV and Excel Columns**: `roadmap_title,roadmap_description,topic_title,topic_description,topic_order,topic_status,task_title,task_description,due_date,due_time,priority,task_status,reminder`
-
-## Non-Functional Requirements
-- **NFR-01 Offline**: Core works without internet.
-- **NFR-02 Reliability**: Reminder scheduling must be deterministic and recoverable after restart.
-- **NFR-03 Data Integrity**: Completed tasks don't produce pending reminders.
-- **NFR-04 Testability**: Domain rules testable without Flutter widgets.
-
-## Acceptance Criteria
-- Tasks survive app restart, can be edited/completed. Subtasks work independently.
-- Multiple reminders calculate timestamps correctly. Completing task cancels pending. Snoozing/Constant Reminder persist state.
-- Focus sessions persist state.
-- Timetable CSV/Excel/OCR produces an editable draft. Nothing is persisted before confirmation, and confirmed rows are saved in one SQLite transaction.
-- Roadmaps, topics, and task assignments remain available after restart.
+Future product work is tracked in [the roadmap](ROADMAP.md).

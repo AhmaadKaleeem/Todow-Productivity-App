@@ -1,8 +1,12 @@
 # Miscellaneous
 *.class
 *.log
-*.pyc
 *.swp
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
 .DS_Store
 .atom/
 .build/
@@ -38,6 +42,13 @@ android/build/
 ios/Pods/
 coverage/
 .impeccable/
+
+# Python tooling caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Symbolication related
 app.*.symbols

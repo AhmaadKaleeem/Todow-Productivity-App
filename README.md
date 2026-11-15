@@ -1,27 +1,19 @@
 # Todow
 
-Todow is a local-first planner for study, work, and personal tasks. Create tasks, set deadlines and reminders, and manage schedules in one app. University timetables are supported today; the task planner can also be used for work and personal projects.
-
-<p align="center">
-  <img src="screenshots/dashboard.png" width="320" alt="Todow dashboard screen" />
-  <br />
-  &#8595;
-  <br />
-  <img src="screenshots/create-task.png" width="320" alt="Todow task editor screen" />
-</p>
+Keep tasks, class schedules, and focus sessions together. Plan around your week and choose when reminders arrive. Your data stays on your device, and core features work offline.
 
 ## Features
 
-- **Tasks** Create, edit, complete, reopen, archive, and delete tasks. Add priorities, dates, tags, descriptions, and subtasks. Search, filter, sort, reorder, duplicate, and insert tasks from the list.
-- **Task reminders** Set multiple reminders before a deadline or at the due time. Choose Normal, Assignment, or Critical presets, set custom reminder times, or schedule a daily reminder. Optional settings include repeat reminders, flexible timing around classes, quiet hours, and alarm sounds.
-- **Android full-screen alarms** Show the task name and current time when an alarm rings. Stop it, snooze for 10 minutes, or open Todow. Exact alarms and full-screen display require the matching Android permissions.
+- **Tasks** Keep deadlines, notes, tags, and subtasks with each task. Search, sort, and filter your list, then mark work complete as you go.
+- **Task reminders** Choose preset or custom reminder times, set repeats, and adjust quiet hours. Important tasks can use a full-screen alarm.
+- **Android alarms** See the task and time when an alarm rings. Dismiss it, snooze for 10 minutes, or open Todow. Android permissions are required for exact alarms and full-screen display.
 - **Attachments** Add and open images, PDFs, and other local files on a task.
-- **Today dashboard** View overdue and upcoming tasks, active reminders, focus sessions, and today's classes.
-- **Roadmaps** Organize work into ordered Topics with tasks and progress. Import and export roadmaps as CSV or Excel files.
-- **Timetable** Add weekly university classes and personal plans. Import schedules from CSV or Excel, or scan a schedule image into an editable draft.
-- **Focus mode** Browse five compact activity categories, with two activities shown at a time and more available on demand. Technical work combines development and analysis; saved activities have their own view. Each activity has a purpose-built environment that progresses with the session and stays synchronized across pauses and app backgrounding. Set optional groups, subgroups, and default durations for saved activities.
+- **Today dashboard** See overdue and upcoming tasks, reminders, focus sessions, and today's classes in one place.
+- **Roadmaps** Break a larger goal into topics, add tasks, and track progress. Import or export CSV and Excel files.
+- **Timetable** Plan weekly classes and personal commitments. Import CSV or Excel files, or scan an image and review the entries before saving.
+- **Focus sessions** Choose an activity, set a duration, and optionally link a task. Save custom activities with their own groups and default durations.
 
-### In Progress
+### Planned
 - **Rest-Time Ambient Music** Built-in restorative audio soundscapes and rest music during the 20-minute recovery interval, selectable by the user.
 
 ### Future Roadmap
@@ -50,8 +42,8 @@ flutter analyze
 
 ## Docs
 
-- [Product spec](docs/PRODUCT.md)
+- [Product behavior](docs/PRODUCT.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Design spec](docs/DESIGN_SPEC.md)
-- [User flows](docs/FLOWS.md)
+- [Design system](docs/DESIGN_SPEC.md)
+- [Application flows](docs/FLOWS.md)
 - [Roadmap](docs/ROADMAP.md)

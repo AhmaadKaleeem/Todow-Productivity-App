@@ -1,57 +1,48 @@
 # Application Flows
 
-## Reminder Flow
-
-### Scheduling
-
-![Reminder Sequence](../assets/Diagram_Reminder_Sequence.png)
+## Task reminders
 
 ```mermaid
 sequenceDiagram
     actor User
-    participant UI
-    participant TaskService
-    participant ReminderEngine
-    participant Repo
-    participant Scheduler
-    participant OS as OS Notification
+    participant UI as Task editor
+    participant Controller as TaskController
+    participant Tasks as TaskRepository
+    participant Scheduler as ReminderSchedulerImpl
+    participant Calculator as ReminderCalculator
+    participant Notifications as NotificationService
+    participant OS as Android alarms and notifications
 
-    User->>UI: Create task + reminders
-    UI->>TaskService: Create task
-    TaskService->>Repo: Save task
-    TaskService->>ReminderEngine: Build schedule
-    ReminderEngine->>Repo: Save reminders
-    ReminderEngine->>Scheduler: Schedule notifications
-    Scheduler->>OS: Register alarms
+    User->>UI: Save task and reminder settings
+    UI->>Controller: Create or update task
+    Controller->>Tasks: Persist task
+    Controller->>Scheduler: Sync task reminders
+    Scheduler->>Tasks: Read existing scheduled reminders
+    Scheduler->>Calculator: Build schedule from task and timetable
+    Calculator-->>Scheduler: Scheduled reminder times
+    Scheduler->>Notifications: Schedule or cancel alerts
+    Notifications->>OS: Register or cancel system alerts
 ```
 
-### Reliability Rules
-The scheduler must be reconstructable from persistent state. On application startup:
-1. Load active tasks & pending reminders.
-2. Detect expired/stale schedules.
-3. Reconcile and schedule missing notifications.
-4. Cancel notifications for completed/cancelled tasks.
+Completing, archiving, or deleting a task cancels its pending reminders. Snoozing changes the scheduled wake-up time for that reminder.
 
-## Timetable Import Flow
+## Timetable import
 
-### Architecture
-
-![Timetable Sequence](../assets/Timetable%20sequence%20diagram.png)
-
-```text
-UNIVERSITY OR PERSONAL SCHEDULE
-      ↓
-Manual entry OR CSV / Excel parser OR camera / gallery OCR
-      ↓
-Editable timetable draft
-      ↓
-Review course, instructor, room, weekday, start and end time
-      ↓
-Validate every row
-      ↓
-Confirm
-      ↓
-Persist the full import in one SQLite transaction
+```mermaid
+flowchart TD
+    SOURCE[CSV, Excel, camera, or gallery] --> PARSE[Parse file or scan image]
+    PARSE --> DRAFT[Create editable draft]
+    DRAFT --> REVIEW[Review and edit entries]
+    REVIEW -->|Cancel| DISCARD[Discard draft]
+    REVIEW -->|Confirm| VALIDATE[Validate all entries]
+    VALIDATE --> SAVE[Save entries in one SQLite transaction]
 ```
 
-University manual entries use a recurring weekly model. Personal entries can repeat weekly or use a selected date and can link to an existing task. Copying university classes makes independent personal entries. Tasks, including roadmap tasks, can be scheduled into Personal; a personal activity can create its linked task. CSV and Excel imports use the columns `course,instructor,day,start_time,end_time,room` and parse deterministically. OCR tries up to three scans for an image; after the third failure the user can try a different image, import CSV/Excel, or copy an optional prompt for an external assistant. No import writes to SQLite before confirmation. If any confirmed row fails to save, the transaction rolls back the whole import.
+The selected schedule remains visible during import. Imported entries are not saved until confirmation. If validation or persistence fails, the import does not leave a partial set of entries.
+
+## Timetable schedule rules
+
+- University entries repeat weekly.
+- Personal entries can repeat weekly or use one selected date.
+- Copying entries creates independent entries in the destination schedule.
+- Personal entries can link to tasks.

@@ -1,66 +1,42 @@
 # Application Architecture
 
-## Architecture Style
-**Feature-first layered architecture** combining Riverpod state management, domain models, application services, repository interfaces, and SQLite persistence through Drift.
+Todow is a local-first Flutter app. Presentation features use domain models and repository interfaces; local data implementations handle SQLite, files, notifications, and platform services. The app has no application server.
 
-```text
-Presentation (Flutter UI)
-    ↓
-Riverpod (State + DI)
-    ↓
-Application (Use Cases / Services)
-    ↓
-Domain (Entities / Value Objects / Rules)
-    ↓
-Data / Infrastructure (Repositories / SQLite / Drift / Notifications)
-```
+## Project layout
 
-## Decisions & ADRs
-1. **Riverpod**: Used for dependency injection and observable state. **Constraint**: Do not place business logic in Riverpod providers.
-2. **SQLite + Drift**: Persistence engine. **Constraint**: Application/Domain layers must not depend directly on Drift APIs.
-3. **Local-first MVP**: MVP operates without auth or cloud. Future integrations use adapters.
-4. **Human Review**: Imported data (CSV/OCR) always creates a draft that must be reviewed and confirmed before persistence.
+| Path | Responsibility |
+| --- | --- |
+| `lib/core/` | Shared routing, theme, service providers, and utilities |
+| `lib/domain/` | Models, reminder rules, repository contracts, and service contracts |
+| `lib/data/local/` | SQLite database and repository implementations |
+| `lib/data/services/` | File storage, notifications, scheduling, and platform adapters |
+| `lib/presentation/features/` | Screens, state, and widgets grouped by product area |
+| `lib/presentation/shared/` | UI shared across product areas |
 
-## State Management
-- **Persistent state** (SQLite): tasks, reminders, timetable, roadmaps, focus sessions.
-- **Ephemeral UI state** (Riverpod/UI): selected filters, active tabs, import drafts, form values.
-- **Domain state**: Represented by pure entities/value objects, not arbitrary widgets.
-
-## Domain Model
-- **Task**: Contains Subtasks, Attachments, Reminders, Focus Sessions.
-- **Reminder**: Contains `taskId`, `scheduledAt`, `status`, `snoozeUntil`.
-- **FocusSession**: Task-linked duration session.
-- **TimetableEntry / TimetableDraftEntry**: A University class or Personal activity. Entries store schedule scope, recurrence/date, and an optional task link. CSV, Excel, and OCR drafts stay in presentation memory until validated and confirmed; one repository transaction persists a confirmed batch.
-- **Roadmap / Milestone**: Long-term goal tracking.
-
-## System Diagram
-
-![System Diagram](../assets/System%20diagram.png)
+## Dependency direction
 
 ```mermaid
-flowchart TB
-    UI["Flutter UI"]
-    RIVERPOD["Riverpod<br/>State + DI"]
-    APP["Application Layer<br/>Use Cases / Services"]
-    DOMAIN["Domain Layer<br/>Entities / Rules"]
-    REPO["Repository Interfaces"]
-    DB["Drift / SQLite"]
-    FILES["Local File Storage"]
-    NOTIFY["Notification Scheduler"]
-    PLATFORM["Platform Services"]
-
-    UI --> RIVERPOD
-    RIVERPOD --> APP
-    APP --> DOMAIN
-    APP --> REPO
-    REPO --> DB
-    REPO --> FILES
-    APP --> NOTIFY
-    APP --> PLATFORM
+flowchart TD
+    UI[Presentation features] --> CORE[Core providers and routing]
+    UI --> DOMAIN[Domain models and contracts]
+    CORE --> DATA[Data implementations]
+    DATA --> DOMAIN
+    DATA --> SQLITE[SQLite and local files]
+    DATA --> PLATFORM[Notifications and platform APIs]
 ```
 
-## Implementation Rules
-1. Do not implement features outside the current MVP.
-2. Do not bypass domain/application boundaries for convenience.
-3. Do not place business logic inside widgets or SQL inside presentation code.
-4. Reuse existing infrastructure before creating new.
+Presentation coordinates user interaction and state. Domain code owns product rules and contracts. Data code implements those contracts with local storage or platform APIs. Keep SQL and platform details out of presentation and domain code.
+
+## State and persistence
+
+- Tasks, subtasks, attachments, reminder plans, roadmaps, timetables, and focus sessions persist on the device.
+- Screen state such as open forms, selected filters, and import drafts stays in presentation state until the user saves it.
+- CSV, spreadsheet, and image imports produce reviewable drafts. Persist imported entries only after confirmation.
+- Web and native targets use platform-specific database and notification adapters where required.
+
+## Change guidelines
+
+- Keep business rules in domain code or the service that owns them, not in widgets.
+- Depend on domain contracts from higher-level code; keep storage and platform APIs in data implementations.
+- Extend an existing feature folder before creating a new shared abstraction.
+- Preserve local-first behavior. Add network services only when the product requirements call for them.
