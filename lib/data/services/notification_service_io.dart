@@ -522,6 +522,7 @@ class NotificationServiceImpl implements NotificationService {
           'triggerAt': scheduledAt.millisecondsSinceEpoch,
           'taskId': task.id,
           'taskTitle': task.title,
+          'taskDescription': task.description,
           'soundName': soundKey,
         },
       );
@@ -647,6 +648,7 @@ class NotificationServiceImpl implements NotificationService {
             .invokeMethod('startAlarm', {
           'taskId': task.id,
           'taskTitle': task.title,
+          'taskDescription': task.description,
           'soundName': soundKey,
         });
         return notificationId;

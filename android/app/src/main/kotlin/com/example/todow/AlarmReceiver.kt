@@ -16,6 +16,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
         const val EXTRA_TASK_ID = "EXTRA_TASK_ID"
         const val EXTRA_TASK_TITLE = "EXTRA_TASK_TITLE"
+        const val EXTRA_TASK_DESCRIPTION = "EXTRA_TASK_DESCRIPTION"
         const val EXTRA_SOUND_NAME = "EXTRA_SOUND_NAME"
         private const val EXTRA_NOTIFICATION_ID = "EXTRA_NOTIFICATION_ID"
         private const val SNOOZE_MILLIS = 10 * 60 * 1000L
@@ -26,6 +27,7 @@ class AlarmReceiver : BroadcastReceiver() {
             triggerAt: Long,
             taskId: String,
             taskTitle: String,
+            taskDescription: String = "",
             soundName: String,
         ) {
             val triggerIntent = Intent(context, AlarmReceiver::class.java).apply {
@@ -33,6 +35,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 putExtra(EXTRA_NOTIFICATION_ID, notificationId)
                 putExtra(EXTRA_TASK_ID, taskId)
                 putExtra(EXTRA_TASK_TITLE, taskTitle)
+                putExtra(EXTRA_TASK_DESCRIPTION, taskDescription)
                 putExtra(EXTRA_SOUND_NAME, soundName)
             }
             val pendingIntent = PendingIntent.getBroadcast(
@@ -93,9 +96,10 @@ class AlarmReceiver : BroadcastReceiver() {
             ACTION_ALARM_TRIGGER -> {
                 val taskId = intent.getStringExtra(EXTRA_TASK_ID) ?: ""
                 val taskTitle = intent.getStringExtra(EXTRA_TASK_TITLE) ?: "Task Reminder"
+                val taskDescription = intent.getStringExtra(EXTRA_TASK_DESCRIPTION) ?: ""
                 val soundName = intent.getStringExtra(EXTRA_SOUND_NAME) ?: "alarm_sound"
 
-                AlarmRingingService.startAlarm(context, taskId, taskTitle, soundName)
+                AlarmRingingService.startAlarm(context, taskId, taskTitle, soundName, taskDescription)
             }
             ACTION_DISMISS -> {
                 AlarmRingingService.stopAlarm(context)
@@ -106,6 +110,7 @@ class AlarmReceiver : BroadcastReceiver() {
                     context = context,
                     taskId = intent.getStringExtra(EXTRA_TASK_ID) ?: "",
                     taskTitle = intent.getStringExtra(EXTRA_TASK_TITLE) ?: "Task Reminder",
+                    taskDescription = intent.getStringExtra(EXTRA_TASK_DESCRIPTION) ?: "",
                     soundName = intent.getStringExtra(EXTRA_SOUND_NAME) ?: "alarm_sound",
                 )
             }
@@ -116,6 +121,7 @@ class AlarmReceiver : BroadcastReceiver() {
         context: Context,
         taskId: String,
         taskTitle: String,
+        taskDescription: String,
         soundName: String,
     ) {
         val notificationId = (taskId.hashCode() and 0x7fffffff) xor
@@ -126,6 +132,7 @@ class AlarmReceiver : BroadcastReceiver() {
             triggerAt = System.currentTimeMillis() + SNOOZE_MILLIS,
             taskId = taskId,
             taskTitle = taskTitle,
+            taskDescription = taskDescription,
             soundName = soundName,
         )
     }

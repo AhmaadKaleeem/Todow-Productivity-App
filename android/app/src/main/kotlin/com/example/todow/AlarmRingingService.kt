@@ -29,13 +29,21 @@ class AlarmRingingService : Service() {
 
         const val EXTRA_TASK_ID = "EXTRA_TASK_ID"
         const val EXTRA_TASK_TITLE = "EXTRA_TASK_TITLE"
+        const val EXTRA_TASK_DESCRIPTION = "EXTRA_TASK_DESCRIPTION"
         const val EXTRA_SOUND_NAME = "EXTRA_SOUND_NAME"
 
-        fun startAlarm(context: Context, taskId: String, taskTitle: String, soundName: String = "alarm_sound") {
+        fun startAlarm(
+            context: Context,
+            taskId: String,
+            taskTitle: String,
+            soundName: String = "alarm_sound",
+            taskDescription: String = "",
+        ) {
             val intent = Intent(context, AlarmRingingService::class.java).apply {
                 action = ACTION_START
                 putExtra(EXTRA_TASK_ID, taskId)
                 putExtra(EXTRA_TASK_TITLE, taskTitle)
+                putExtra(EXTRA_TASK_DESCRIPTION, taskDescription)
                 putExtra(EXTRA_SOUND_NAME, soundName)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -67,6 +75,7 @@ class AlarmRingingService : Service() {
         val taskId = intent?.getStringExtra(EXTRA_TASK_ID) ?: ""
         val taskTitle = intent?.getStringExtra(EXTRA_TASK_TITLE) ?: "Task Reminder"
         val soundName = intent?.getStringExtra(EXTRA_SOUND_NAME) ?: "alarm_sound"
+        val taskDescription = intent?.getStringExtra(EXTRA_TASK_DESCRIPTION) ?: ""
 
         createNotificationChannel()
 
@@ -74,6 +83,8 @@ class AlarmRingingService : Service() {
         val fullScreenIntent = Intent(this, AlarmActivity::class.java).apply {
             putExtra(EXTRA_TASK_ID, taskId)
             putExtra(EXTRA_TASK_TITLE, taskTitle)
+            putExtra(EXTRA_TASK_DESCRIPTION, taskDescription)
+            putExtra(EXTRA_SOUND_NAME, soundName)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NO_USER_ACTION)
         }
         val fullScreenPendingIntent = PendingIntent.getActivity(

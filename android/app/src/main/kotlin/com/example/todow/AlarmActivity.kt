@@ -14,6 +14,9 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -34,11 +37,38 @@ class AlarmActivity : Activity() {
     private val clockTicker = object : Runnable {
         override fun run() {
             val now = Date()
-            clockView?.text = android.text.format.DateFormat
+            val timeText = android.text.format.DateFormat
                 .getTimeFormat(this@AlarmActivity).format(now)
+            clockView?.let { clock ->
+                if (clock.text.toString() != timeText) {
+                    val styledTime = SpannableString(timeText)
+                    val separator = timeText.indexOf(':')
+                    if (separator >= 0) {
+                        styledTime.setSpan(
+                            ForegroundColorSpan(Color.parseColor("#0EA5E9")),
+                            separator,
+                            separator + 1,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                        )
+                    }
+                    clock.text = styledTime
+                    clock.animate().cancel()
+                    if (clock.isLaidOut && Settings.Global.getFloat(
+                            contentResolver,
+                            Settings.Global.ANIMATOR_DURATION_SCALE,
+                            1f,
+                        ) > 0f
+                    ) {
+                        clock.alpha = 0.78f
+                        clock.animate().alpha(1f).setDuration(180).start()
+                    } else {
+                        clock.alpha = 1f
+                    }
+                }
+            }
             dateView?.text = android.text.format.DateFormat
                 .getLongDateFormat(this@AlarmActivity).format(now)
-            clockHandler.postDelayed(this, 30_000)
+            clockHandler.postDelayed(this, 1_000)
         }
     }
 
@@ -109,17 +139,11 @@ class AlarmActivity : Activity() {
         val ink = Color.parseColor("#1A1D24")
         val muted = Color.parseColor("#625C56")
         val azure = Color.parseColor("#0EA5E9")
-        val amber = Color.parseColor("#B45309")
         val isLandscape =
             resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         val isExpanded = resources.configuration.screenWidthDp >= 600
         val contentWidth = minOf(dp(560f), resources.displayMetrics.widthPixels)
 
-        val scrollView = ScrollView(this).apply {
-            isFillViewport = true
-            setBackgroundColor(cream)
-            clipToPadding = false
-        }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -137,36 +161,16 @@ class AlarmActivity : Activity() {
             )
         }
 
-        val statusRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+        val contentScroll = ScrollView(this).apply {
+            isFillViewport = true
+            isVerticalScrollBarEnabled = false
+            clipToPadding = false
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                dp(if (isLandscape) 16f else 24f),
-            ).apply { bottomMargin = dp(if (isLandscape) 4f else 12f) }
+            setPadding(0, 0, 0, dp(16f))
         }
-        val statusMark = View(this).apply { background = background(amber, 50f) }
-        statusRow.addView(statusMark, LinearLayout.LayoutParams(dp(6f), dp(6f)).apply {
-            rightMargin = dp(8f)
-        })
-        statusRow.addView(textView("ALARM RINGING", 12f, ink, Typeface.BOLD).apply {
-            letterSpacing = 0.1f
-        })
-        root.addView(statusRow)
-
-        if (Settings.Global.getFloat(
-                contentResolver,
-                Settings.Global.ANIMATOR_DURATION_SCALE,
-                1f,
-            ) > 0f
-        ) {
-            alarmPulse = ObjectAnimator.ofFloat(statusMark, View.ALPHA, 1f, 0.58f).apply {
-                duration = 1600
-                repeatMode = ObjectAnimator.REVERSE
-                repeatCount = ObjectAnimator.INFINITE
-            }
-        }
-
         clockView = textView(
             "",
             when {
@@ -180,21 +184,23 @@ class AlarmActivity : Activity() {
             gravity = Gravity.CENTER
             letterSpacing = -0.04f
             fontFeatureSettings = "tnum"
-            includeFontPadding = false
+            maxLines = 1
+            setHorizontallyScrolling(false)
+            includeFontPadding = true
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 setAutoSizeTextTypeUniformWithConfiguration(
-                    if (isLandscape) 42 else 48,
+                    if (isLandscape) 28 else 32,
                     if (isLandscape) 48 else if (isExpanded) 80 else 68,
                     1,
                     TypedValue.COMPLEX_UNIT_SP,
                 )
             }
         }
-        root.addView(clockView)
+        content.addView(clockView)
 
         dateView = textView("", if (isLandscape) 14f else 16f, muted).apply {
             gravity = Gravity.CENTER
@@ -205,43 +211,63 @@ class AlarmActivity : Activity() {
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             ).apply {
                 topMargin = dp(6f)
-                bottomMargin = dp(if (isLandscape) 8f else 34f)
+                bottomMargin = dp(if (isLandscape) 12f else 24f)
             }
         }
-        root.addView(dateView)
+        content.addView(dateView)
 
-        root.addView(textView("TASK REMINDER", 12f, muted, Typeface.BOLD).apply {
-            gravity = Gravity.CENTER
-            letterSpacing = 0.12f
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(if (isLandscape) 4f else 8f) }
-        })
-        root.addView(textView(
+        val titleView = textView(
             taskTitle,
             when {
-                isLandscape -> 22f
-                isExpanded -> 32f
-                else -> 28f
+                isLandscape -> 24f
+                isExpanded -> 34f
+                else -> 30f
             },
             ink,
             Typeface.BOLD,
         ).apply {
             gravity = Gravity.CENTER
-            maxLines = if (isLandscape) 2 else 3
-            ellipsize = android.text.TextUtils.TruncateAt.END
             setLineSpacing(0f, 1.08f)
             includeFontPadding = false
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-            )
-        })
-        root.addView(
-            View(this).apply { minimumHeight = dp(if (isLandscape) 8f else 32f) },
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f),
-        )
+            ).apply { bottomMargin = dp(12f) }
+        }
+        content.addView(titleView)
+
+        val taskDescription = intent.getStringExtra(AlarmRingingService.EXTRA_TASK_DESCRIPTION)
+            ?.trim().orEmpty()
+        if (taskDescription.isNotEmpty()) {
+            content.addView(textView(taskDescription, 16f, muted).apply {
+                gravity = Gravity.CENTER
+                setLineSpacing(dp(3f).toFloat(), 1f)
+                includeFontPadding = false
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
+            })
+        }
+
+        contentScroll.addView(content)
+        root.addView(contentScroll, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            0,
+            1f,
+        ))
+
+        if (Settings.Global.getFloat(
+                contentResolver,
+                Settings.Global.ANIMATOR_DURATION_SCALE,
+                1f,
+            ) > 0f
+        ) {
+            alarmPulse = ObjectAnimator.ofFloat(titleView, View.TRANSLATION_X, 0f, -dp(2f).toFloat(), dp(2f).toFloat(), 0f).apply {
+                duration = 1500
+                repeatCount = ObjectAnimator.INFINITE
+            }
+        }
 
         val snoozeButton = Button(this).apply {
             text = "Snooze 10 min"
@@ -261,6 +287,7 @@ class AlarmActivity : Activity() {
                     action = AlarmReceiver.ACTION_SNOOZE
                     putExtra(AlarmReceiver.EXTRA_TASK_ID, taskId)
                     putExtra(AlarmReceiver.EXTRA_TASK_TITLE, taskTitle)
+                    putExtra(AlarmReceiver.EXTRA_TASK_DESCRIPTION, taskDescription)
                     putExtra(AlarmReceiver.EXTRA_SOUND_NAME, soundName)
                 })
                 finish()
@@ -318,8 +345,7 @@ class AlarmActivity : Activity() {
             dp(48f),
         ).apply { topMargin = dp(if (isLandscape) 0f else 6f) })
 
-        scrollView.addView(root)
-        setContentView(scrollView)
+        setContentView(root)
     }
 
     override fun onResume() {

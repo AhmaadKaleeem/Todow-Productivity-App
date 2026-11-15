@@ -17,8 +17,9 @@ class MainActivity: FlutterActivity() {
                 "startAlarm" -> {
                     val taskId = call.argument<String>("taskId") ?: ""
                     val taskTitle = call.argument<String>("taskTitle") ?: "Task Reminder"
+                    val taskDescription = call.argument<String>("taskDescription") ?: ""
                     val soundName = call.argument<String>("soundName") ?: "alarm_sound"
-                    AlarmRingingService.startAlarm(this, taskId, taskTitle, soundName)
+                    AlarmRingingService.startAlarm(this, taskId, taskTitle, soundName, taskDescription)
                     result.success(true)
                 }
                 "scheduleAlarm" -> {
@@ -40,6 +41,7 @@ class MainActivity: FlutterActivity() {
                         triggerAt = triggerAt,
                         taskId = call.argument<String>("taskId") ?: "",
                         taskTitle = call.argument<String>("taskTitle") ?: "Task Reminder",
+                        taskDescription = call.argument<String>("taskDescription") ?: "",
                         soundName = call.argument<String>("soundName") ?: "alarm_sound",
                     )
                     result.success(true)
