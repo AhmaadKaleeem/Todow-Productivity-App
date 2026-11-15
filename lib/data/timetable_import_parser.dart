@@ -32,7 +32,7 @@ class TimetableImportParser {
 
   TimetableImportDraft parseOcr(RecognizedText recognizedText) {
     final rows = <TimetableDraftEntry>[];
-    
+
     // 1. Gather all text elements with their bounding boxes
     final elements = <TextElement>[];
     for (final block in recognizedText.blocks) {
@@ -62,7 +62,7 @@ class TimetableImportParser {
 
     for (final el in elements) {
       final text = el.text.trim();
-      
+
       final dayMatch = dayPattern.firstMatch(text);
       if (dayMatch != null && text.length < 15) {
         final day = _parseDay(dayMatch.group(1)!);
@@ -86,17 +86,17 @@ class TimetableImportParser {
         r'(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s*(?:-|–|—|to)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)',
         caseSensitive: false,
       ).firstMatch(text);
-      
+
       if (timeRangeMatch != null) {
         final start = _parseTime(timeRangeMatch.group(1)!);
         var end = _parseTime(timeRangeMatch.group(2)!);
         if (start != null && end != null) {
-           timeNodes[el.boundingBox] = start;
-           // We approximate end time location slightly to the right to avoid overwriting map key
-           timeNodes[el.boundingBox.translate(1, 0)] = end;
-           if (text.length < timeRangeMatch.group(0)!.length + 5) {
-             continue;
-           }
+          timeNodes[el.boundingBox] = start;
+          // We approximate end time location slightly to the right to avoid overwriting map key
+          timeNodes[el.boundingBox.translate(1, 0)] = end;
+          if (text.length < timeRangeMatch.group(0)!.length + 5) {
+            continue;
+          }
         }
       }
 
@@ -111,18 +111,22 @@ class TimetableImportParser {
     }
 
     // Group remaining content into logical lines by Y-overlap
-    contentElements.sort((a, b) => a.boundingBox.top.compareTo(b.boundingBox.top));
+    contentElements
+        .sort((a, b) => a.boundingBox.top.compareTo(b.boundingBox.top));
     final logicalLines = <List<TextElement>>[];
-    
+
     for (final el in contentElements) {
       bool added = false;
       for (final line in logicalLines) {
         // Find average Y center of line
         final lineRects = line.map((e) => e.boundingBox);
-        final avgTop = lineRects.map((r) => r.top).reduce((a, b) => a + b) / line.length;
-        final avgBottom = lineRects.map((r) => r.bottom).reduce((a, b) => a + b) / line.length;
+        final avgTop =
+            lineRects.map((r) => r.top).reduce((a, b) => a + b) / line.length;
+        final avgBottom =
+            lineRects.map((r) => r.bottom).reduce((a, b) => a + b) /
+                line.length;
         final lineBounds = Rect.fromLTRB(0, avgTop, 0, avgBottom);
-        
+
         if (overlapsY(el.boundingBox, lineBounds)) {
           line.add(el);
           added = true;
@@ -137,13 +141,15 @@ class TimetableImportParser {
       line.sort((a, b) => a.boundingBox.left.compareTo(b.boundingBox.left));
       final text = line.map((e) => e.text).join(' ').trim();
       if (text.isEmpty) continue;
-      
-      final lineBounds = line.map((e) => e.boundingBox).reduce((a, b) => a.expandToInclude(b));
+
+      final lineBounds =
+          line.map((e) => e.boundingBox).reduce((a, b) => a.expandToInclude(b));
 
       // Find overlapping Day (Column)
       Weekday? assignedDay;
       if (dayHeaders.isNotEmpty) {
-        assignedDay = dayHeaders.entries.fold<MapEntry<Rect, Weekday>?>(null, (closest, entry) {
+        assignedDay = dayHeaders.entries.fold<MapEntry<Rect, Weekday>?>(null,
+            (closest, entry) {
           // Find day header whose X range aligns best with this line
           if (closest == null) return entry;
           final d1 = (entry.key.center.dx - lineBounds.center.dx).abs();
@@ -155,18 +161,22 @@ class TimetableImportParser {
       // Find nearby Times (Rows)
       DateTime? startTime;
       DateTime? endTime;
-      
+
       if (timeNodes.isNotEmpty) {
         // Get times roughly on the same Y axis
         final rowTimes = timeNodes.entries
-            .where((e) => (e.key.center.dy - lineBounds.center.dy).abs() < lineBounds.height)
+            .where((e) =>
+                (e.key.center.dy - lineBounds.center.dy).abs() <
+                lineBounds.height)
             .map((e) => e.value)
             .toList()
           ..sort();
-        
+
         if (rowTimes.isNotEmpty) {
           startTime = rowTimes.first;
-          endTime = rowTimes.length > 1 ? rowTimes.last : startTime.add(const Duration(hours: 1));
+          endTime = rowTimes.length > 1
+              ? rowTimes.last
+              : startTime.add(const Duration(hours: 1));
         }
       }
 
@@ -182,7 +192,9 @@ class TimetableImportParser {
           startTime = _parseTime(timeRangeMatch.group(1)!);
           endTime = _parseTime(timeRangeMatch.group(2)!);
         }
-        details = details.replaceRange(timeRangeMatch.start, timeRangeMatch.end, ' ').trim();
+        details = details
+            .replaceRange(timeRangeMatch.start, timeRangeMatch.end, ' ')
+            .trim();
       }
 
       if (assignedDay == null) {
@@ -194,31 +206,32 @@ class TimetableImportParser {
 
       // Remove inline day names if they got mixed in
       details = details.replaceAll(dayPattern, ' ').trim();
-      
+
       // Room extraction FIRST to prevent instructor regex from eating 'Room'
       String room = '';
       final roomMatch = RegExp(
         r'\b(?:room|lab|venue|c)\s*[#:.\-]?\s*\d+[a-zA-Z0-9 \-]*\b',
         caseSensitive: false,
       ).firstMatch(details);
-      
+
       if (roomMatch != null) {
         room = roomMatch.group(0)!.trim();
         details = details.replaceRange(roomMatch.start, roomMatch.end, ' ');
       }
-      
+
       // Instructor extraction
       String instructor = '';
       final instructorMatch = RegExp(
         r'\b(?:instructor|teacher|prof\.?|dr\.?|mr\.?|ms\.?|mrs\.?)\s*[:\-]?\s*[a-zA-Z]+(?:\s+[a-zA-Z]+)*',
         caseSensitive: false,
       ).firstMatch(details);
-      
+
       if (instructorMatch != null) {
         instructor = instructorMatch.group(0)!.trim();
-        details = details.replaceRange(instructorMatch.start, instructorMatch.end, ' ');
+        details = details.replaceRange(
+            instructorMatch.start, instructorMatch.end, ' ');
       }
-      
+
       // Clean up course name
       final course = details
           .replaceAll(RegExp(r'\s+'), ' ')
@@ -246,7 +259,7 @@ class TimetableImportParser {
     return TimetableImportDraft(
       rows: rows,
       errors: rows.isEmpty
-          ? const ['No class rows were recognized in this image.']
+          ? const ['No schedule entries were recognized in this image.']
           : const [],
     );
   }
@@ -254,20 +267,27 @@ class TimetableImportParser {
   TimetableImportDraft _draftRows(List<List<String>> source) {
     if (source.isEmpty) {
       return const TimetableImportDraft(
-          rows: [], errors: ['The file has no class rows.']);
+          rows: [], errors: ['The file has no schedule entries.']);
     }
     final headers = {
       for (var i = 0; i < source.first.length; i++)
         _normalizeHeader(source.first[i]): i,
     };
-    int? courseColumn = _column(headers, ['course', 'course_name', 'class']);
+    int? courseColumn = _column(
+      headers,
+      ['name', 'entry', 'activity', 'title', 'course', 'course_name', 'class'],
+    );
     int? dayColumn = _column(headers, ['day', 'weekday']);
     int? startColumn = _column(headers, ['start_time', 'start']);
     int? endColumn = _column(headers, ['end_time', 'end']);
-    int? instructorColumn = _column(headers, ['instructor', 'teacher', 'professor']);
+    int? instructorColumn =
+        _column(headers, ['instructor', 'teacher', 'professor']);
     int? roomColumn = _column(headers, ['room', 'lab', 'venue']);
 
-    if (courseColumn == null || dayColumn == null || startColumn == null || endColumn == null) {
+    if (courseColumn == null ||
+        dayColumn == null ||
+        startColumn == null ||
+        endColumn == null) {
       courseColumn = 0;
       instructorColumn = 1;
       dayColumn = 2;
@@ -304,7 +324,7 @@ class TimetableImportParser {
       rows.add(draft);
     }
     if (rows.isEmpty && errors.isEmpty) {
-      errors.add('The file has no class rows.');
+      errors.add('The file has no schedule entries.');
     }
     return TimetableImportDraft(rows: rows, errors: errors);
   }

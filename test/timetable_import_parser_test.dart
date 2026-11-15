@@ -1,10 +1,28 @@
 import 'dart:ui';
+import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:todow/data/timetable_import_parser.dart';
 import 'package:todow/domain/models/enums.dart';
 
 void main() {
+  test('accepts neutral entry names in timetable CSV files', () {
+    const parser = TimetableImportParser();
+    final draft = parser.parseFile(
+      name: 'work-schedule.csv',
+      bytes: Uint8List.fromList(
+        'name,instructor,day,start_time,end_time,room\n'
+                'Planning,Alex,Monday,09:00,10:00,Office\n'
+            .codeUnits,
+      ),
+    );
+
+    expect(draft.errors, isEmpty);
+    expect(draft.rows, hasLength(1));
+    expect(draft.rows.single.courseName, 'Planning');
+    expect(draft.rows.single.instructor, 'Alex');
+  });
+
   group('TimetableImportParser OCR Spatial Reconstruction', () {
     const parser = TimetableImportParser();
 
@@ -43,22 +61,31 @@ void main() {
           ),
         );
       }
-      return RecognizedText(text: textBlocks.map((e) => e.$1).join('\n'), blocks: blocks);
+      return RecognizedText(
+          text: textBlocks.map((e) => e.$1).join('\n'), blocks: blocks);
     }
 
-    test('reconstructs a standard grid timetable (Days as columns, Times as rows)', () {
+    test(
+        'reconstructs a standard grid timetable (Days as columns, Times as rows)',
+        () {
       final recognizedText = buildMockRecognizedText([
         // Column headers (Days)
         ('Monday', Rect.fromLTRB(100, 10, 200, 40)),
         ('Tuesday', Rect.fromLTRB(250, 10, 350, 40)),
-        
+
         // Row headers (Times)
         ('08:00 - 09:30', Rect.fromLTRB(10, 50, 90, 80)),
         ('10:00 - 11:30', Rect.fromLTRB(10, 100, 90, 130)),
 
         // Classes (Intersections)
-        ('CS101 Dr. Smith Room 4A', Rect.fromLTRB(100, 50, 200, 80)), // Monday 08:00
-        ('MATH200 Prof. Jones', Rect.fromLTRB(250, 100, 350, 130)),   // Tuesday 10:00
+        (
+          'CS101 Dr. Smith Room 4A',
+          Rect.fromLTRB(100, 50, 200, 80)
+        ), // Monday 08:00
+        (
+          'MATH200 Prof. Jones',
+          Rect.fromLTRB(250, 100, 350, 130)
+        ), // Tuesday 10:00
       ]);
 
       final draft = parser.parseOcr(recognizedText);
@@ -66,22 +93,36 @@ void main() {
       expect(draft.errors, isEmpty);
       expect(draft.rows, hasLength(2));
 
-      final monClass = draft.rows.firstWhere((r) => r.weekday == Weekday.monday);
+      final monClass =
+          draft.rows.firstWhere((r) => r.weekday == Weekday.monday);
       expect(monClass.courseName, 'CS101');
       expect(monClass.instructor, 'Dr. Smith');
       expect(monClass.room, 'Room 4A');
-      expect(monClass.startTime, DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 8, 0));
-      expect(monClass.endTime, DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 9, 30));
+      expect(
+          monClass.startTime,
+          DateTime(DateTime.now().year, DateTime.now().month,
+              DateTime.now().day, 8, 0));
+      expect(
+          monClass.endTime,
+          DateTime(DateTime.now().year, DateTime.now().month,
+              DateTime.now().day, 9, 30));
 
-      final tueClass = draft.rows.firstWhere((r) => r.weekday == Weekday.tuesday);
+      final tueClass =
+          draft.rows.firstWhere((r) => r.weekday == Weekday.tuesday);
       expect(tueClass.courseName, 'MATH200');
       expect(tueClass.instructor, 'Prof. Jones');
-      expect(tueClass.startTime, DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 10, 0));
+      expect(
+          tueClass.startTime,
+          DateTime(DateTime.now().year, DateTime.now().month,
+              DateTime.now().day, 10, 0));
     });
-    
+
     test('linear fallback when grid is not found', () {
       final recognizedText = buildMockRecognizedText([
-        ('Monday 14:00 - 15:30 Physics 101 Lab 3', Rect.fromLTRB(10, 10, 300, 30)),
+        (
+          'Monday 14:00 - 15:30 Physics 101 Lab 3',
+          Rect.fromLTRB(10, 10, 300, 30)
+        ),
       ]);
 
       final draft = parser.parseOcr(recognizedText);
@@ -92,7 +133,10 @@ void main() {
       expect(entry.weekday, Weekday.monday);
       expect(entry.courseName, 'Physics 101');
       expect(entry.room, 'Lab 3');
-      expect(entry.startTime, DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 14, 0));
+      expect(
+          entry.startTime,
+          DateTime(DateTime.now().year, DateTime.now().month,
+              DateTime.now().day, 14, 0));
     });
   });
 }
