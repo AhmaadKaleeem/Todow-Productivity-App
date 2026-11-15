@@ -11,8 +11,11 @@ Task reminders are persisted locally and scheduled through the native Android
 notification/alarm receiver, so scheduled delivery is independent of the
 Flutter screen or foreground session. Reminder plans support normal,
 assignment, critical, daily, and custom schedules, with selectable silent,
-beep, sound/vibration, full-screen, and repeated alert behavior. Notifications
-feature high-contrast typography, brand Azure accent styling, dynamic BigText
+beep, sound/vibration, full-screen, and repeated alert behavior. New task
+reminders start off. Turning them on without a due date selects the normal
+schedule and opens date and time selection; reminders become active once a due
+time is set. Notifications feature high-contrast typography, brand Azure
+accent styling, dynamic BigText
 expansion for multi-line details, and human-readable timing labels ("Due in 15 minutes",
 "Deadline reached"). Mobile alarms feature continuous foreground service audio playback
 on STREAM_ALARM, custom vibration cadences, and lock-screen full-screen overlays
@@ -59,7 +62,9 @@ Support local attachments (images, PDFs, local files). Attach, open, remove. SQL
 
 ### FR-03 & FR-04 Reminders & Presets
 Multiple reminders per task (absolute or relative). Snooze, reschedule. Completing task cancels pending reminders.
+The reminder editor shows whether reminders are on and the next scheduled time first. Users can choose a schedule, add or edit individual reminder times, repeat daily, set quiet hours, and choose how alerts behave.
 On Android, reminders use exact alarms to notify at their scheduled time while Todow is in the background. Alarm mode can ring over the lock screen when Android's alarm and full-screen notification permissions are enabled.
+The full-screen alarm keeps the device lock screen in place and centers the live local time, date, and task being reminded. Snooze is the prominent action; Dismiss remains distinct, and Open Todow stays available as a secondary route. The same controls remain available when the device is already unlocked.
 On first launch, Todow explains that notification access is used for task reminders before opening the operating-system permission prompt. The full-screen prompt can be skipped, and the explanation is shown once.
 Presets:
 - NORMAL: 1 day before + deadline
@@ -76,7 +81,7 @@ The Home screen keeps its three summary cards at the top, then brings today's du
 
 ### FR-08 Focus Mode
 Task-linked sessions, timer, pause/resume/end, presets, basic distraction controls.
-Focus activities cover development, learning, creative work, professional work, personal growth, and analytical work. Each activity has a purpose-built environment that uses the visual language and artifacts of that work.
+Focus activities use five compact filters: Technical (development and analysis), Learning, Creative, Work, and Personal. Each activity has a purpose-built environment that uses the visual language and artifacts of that work. Saved personal activities stay in a separate My activities view.
 People can save custom activities with optional groups and subgroups, choose a matching environment or use an automatic mixed workspace, and set default durations for custom or built-in activities.
 Session environments progress through entry, settling, deep focus, progression, closing, and completion phases in proportion to the selected duration. Elapsed time is derived from session state so the environment catches up after the app returns from the background; pause freezes its progression. Reduced-motion settings remove spatial transitions.
 The Ultradian preset pairs a 90-minute work block with a 20-minute recovery period as an adjustable planning option, not a fixed limit on attention.
@@ -101,7 +106,8 @@ During an active Focus session, Todow will request Android Usage Access permissi
 - No app usage data ever leaves the device. The permission is used solely to detect foreground apps and show the overlay.
 
 ### FR-09, FR-10, FR-11 Timetable
-Keep University classes and Personal plans separate. University entries repeat weekly by default. Personal is an independent planner for weekly activities and one-time dated events; users can copy university classes into it, then edit or delete those copies without changing the University schedule. Personal items can link to existing tasks, tasks (including roadmap tasks) can be placed on the personal timetable, and activities can create linked tasks. Switch between a full week and one day, return to today, and edit or remove entries. In the one-day view, a live timer tracks the current class. Finished classes are struck through like completed tasks. When all classes for the day end, the view shifts to show the next day's schedule. The current or next class is always highlighted, updating instantly if the timetable is edited. Today's Home view highlights the current or next University class.
+Keep University classes and Personal plans separate. University entries repeat weekly by default. Personal is an independent planner for weekly activities and one-time dated events; users can copy university classes into it, then edit or delete those copies without changing the University schedule. Personal items can link to existing tasks, tasks (including roadmap tasks) can be placed on the personal timetable, and activities can create linked tasks. Switch between a full week and one day, return to today, and edit or remove entries. In the one-day view, a live timer tracks the current class. Finished classes are struck through like completed tasks. When all classes for the day end, the view shifts to show the next day's schedule. The current or next class is always highlighted, updating instantly if the timetable is edited. Home combines both schedules under Today's schedule and labels each item with University or the saved Personal profile name.
+The Personal schedule can be named for an office job, freelance work, personal commitments, or a custom profile. Its selected name and description are saved on the device, while entries remain in the existing Personal timetable.
 Add classes by hand or import CSV and Excel. Check and edit every imported row before confirming; Todow saves the confirmed set in one local transaction. Scan an image from the camera or gallery to create an editable draft. Course, day, and time are read from the image when clear; review the instructor and room as well before saving. If three scans cannot read it, switch to CSV or Excel, or copy a prompt to ask an external AI assistant to format the image. That optional step stays outside Todow, and the resulting file is still reviewed here before it is saved.
 
 ### FR-12 & FR-13 Roadmaps

@@ -1,12 +1,12 @@
 import 'package:todow/domain/models/enums.dart';
 
 enum FocusActivityCategory {
-  development('Development'),
+  development('Technical'),
   learning('Learning'),
-  creativeWork('Creative work'),
-  professionalWork('Professional work'),
-  personalGrowth('Personal growth'),
-  analyticalWork('Analytical work'),
+  creativeWork('Creative'),
+  professionalWork('Work'),
+  personalGrowth('Personal'),
+  analyticalWork('Technical'),
   userActivities('My activities');
 
   const FocusActivityCategory(this.label);

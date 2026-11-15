@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -32,17 +34,22 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
   String? _insertingBelowId;
   Map<String, int> _attachmentCounts = {};
   bool _isFilterExpanded = false;
   final _searchCtrl = TextEditingController();
   String? _username;
+  String _personalScheduleName = 'Personal';
   int _taskLimit = 10;
+  Timer? _greetingTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleGreetingChange();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final tc = context.read<TaskController>();
       await tc.loadTasks();
@@ -53,6 +60,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         setState(() {
           _attachmentCounts = counts;
           _username = prefs.getString('username');
+          _personalScheduleName =
+              prefs.getString('timetable_personal_profile_name') ?? 'Personal';
         });
         ref.read(notificationPermissionsProvider.notifier).requestPermissions();
       }
@@ -61,8 +70,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _greetingTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (mounted) setState(() {});
+      _scheduleGreetingChange();
+    } else {
+      _greetingTimer?.cancel();
+    }
+  }
+
+  void _scheduleGreetingChange() {
+    _greetingTimer?.cancel();
+    final now = DateTime.now();
+    final boundaries = [5, 12, 17, 22]
+        .map((hour) => DateTime(now.year, now.month, now.day, hour))
+        .toList()
+      ..add(DateTime(now.year, now.month, now.day + 1, 5));
+    final nextBoundary = boundaries.firstWhere((time) => time.isAfter(now));
+    _greetingTimer = Timer(nextBoundary.difference(now), () {
+      if (!mounted) return;
+      setState(() {});
+      _scheduleGreetingChange();
+    });
+  }
+
+  String _greetingFor(DateTime time) {
+    if (time.hour >= 5 && time.hour < 12) return 'Good morning';
+    if (time.hour < 17 && time.hour >= 12) return 'Good afternoon';
+    if (time.hour < 22 && time.hour >= 17) return 'Good evening';
+    return 'Good night';
   }
 
   bool filterIsActive(TaskFilter f) =>
@@ -143,9 +186,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _todayClasses() {
     final now = DateTime.now();
     final weekday = WeekdayExt.fromDartWeekday(now.weekday);
-    final filter = (day: weekday, kind: TimetableKind.university);
-    final classes = ref.watch(timetableForDayProvider(filter));
-    
+    final savedProfileName =
+        ref.watch(personalTimetableProfileNameProvider).valueOrNull;
+    final personalScheduleName = savedProfileName?.trim().isNotEmpty == true
+        ? savedProfileName!
+        : _personalScheduleName;
+    final classes = [
+      ...ref.watch(timetableForDayProvider(
+          (day: weekday, kind: TimetableKind.university))),
+      ...ref.watch(timetableForDayProvider(
+          (day: weekday, kind: TimetableKind.personal))),
+    ].where((entry) {
+      if (entry.repeatWeekly) return true;
+      final date = entry.scheduledDate;
+      return date != null && DateUtils.isSameDay(date, now);
+    }).toList()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
     var highlighted = -1;
     for (var i = 0; i < classes.length; i++) {
       final entry = classes[i];
@@ -165,21 +222,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeading("TODAY'S CLASSES"),
+        _sectionHeading("TODAY'S SCHEDULE"),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 24),
           decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: AppColors.divider),
+              border: Border.all(color: AppColors.divider),
               boxShadow: const [_softShadow]),
           child: classes.isEmpty
               ? Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
                   child: Row(children: [
                     const Expanded(
-                        child: Text('No classes today',
+                        child: Text('Nothing scheduled today',
                             style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -199,6 +255,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       itemBuilder: (context, index) => _TodayClassRow(
                         entry: classes[index],
                         primary: index == highlighted,
+                        scheduleName: classes[index].scheduleKind ==
+                                TimetableKind.university
+                            ? 'University'
+                            : personalScheduleName,
                         // onTap removed
                         // entry removed
                       ),
@@ -407,16 +467,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           Expanded(
                             child: Text(
                               () {
-                                final hour = DateTime.now().hour;
-                                final greeting = hour < 12
-                                    ? 'Good morning'
-                                    : hour < 17
-                                        ? 'Good afternoon'
-                                        : 'Good evening';
+                                final greeting = _greetingFor(DateTime.now());
                                 return (_username != null &&
-                                        _username!.isNotEmpty)
-                                    ? '$greeting,\n$_username'
-                                    : 'Your\nProjects ($roadmapCount)';
+                                        _username!.trim().isNotEmpty)
+                                    ? '$greeting,\n${_username!.trim()}'
+                                    : greeting;
                               }(),
                               style: const TextStyle(
                                   fontSize: 34,
@@ -816,7 +871,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   if (!tc.loading && allActive.length > _taskLimit)
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 16),
                         child: OutlinedButton(
                           onPressed: () {
                             setState(() {
@@ -830,7 +886,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text('Load 10 more tasks', style: TextStyle(color: AppColors.action)),
+                          child: const Text('Load 10 more tasks',
+                              style: TextStyle(color: AppColors.action)),
                         ),
                       ),
                     ),
@@ -1257,16 +1314,21 @@ class _TaskRowState extends State<_TaskRow>
                     await widget.controller.togglePinTask(widget.task.id);
                   } catch (e, st) {
                     if (!context.mounted) return;
-                    debugPrint('[ERR-HOM-01] Failed to perform task action: $e\n$st');
+                    debugPrint(
+                        '[ERR-HOM-01] Failed to perform task action: $e\n$st');
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("We couldn't perform this action. Please check your connection and try again.")),
+                      const SnackBar(
+                          content: Text(
+                              "We couldn't perform this action. Please check your connection and try again.")),
                     );
                   }
                 },
                 backgroundColor: Colors.transparent,
                 padding: EdgeInsets.zero,
                 child: _SwipeActionTile(
-                  icon: widget.task.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                  icon: widget.task.isPinned
+                      ? Icons.push_pin
+                      : Icons.push_pin_outlined,
                   color: AppColors.action,
                 ),
               ),
@@ -1285,8 +1347,8 @@ class _TaskRowState extends State<_TaskRow>
                     debugPrint('[ERR-HOM-02] Failed to delete task: $e\n$st');
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content:
-                              Text("We couldn't delete this task. Please try again.")),
+                          content: Text(
+                              "We couldn't delete this task. Please try again.")),
                     );
                   }
                 },
@@ -1803,10 +1865,12 @@ class _TodayTaskRow extends StatelessWidget {
                               color: AppColors.textPrimary),
                         ),
                       ),
-                      if (task.priority == TaskPriority.high || task.priority == TaskPriority.medium)
+                      if (task.priority == TaskPriority.high ||
+                          task.priority == TaskPriority.medium)
                         Container(
                           margin: const EdgeInsets.only(left: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: priorityColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
@@ -1824,7 +1888,8 @@ class _TodayTaskRow extends StatelessWidget {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.schedule, size: 14, color: AppColors.textSecondaryOpacity(0.8)),
+                      Icon(Icons.schedule,
+                          size: 14, color: AppColors.textSecondaryOpacity(0.8)),
                       const SizedBox(width: 4),
                       Text(
                         'Due ${AppDateFormat.time(task.dueAt!)}',
@@ -1833,9 +1898,12 @@ class _TodayTaskRow extends StatelessWidget {
                             fontWeight: FontWeight.w500,
                             color: AppColors.textSecondaryOpacity(0.9)),
                       ),
-                      if (task.category != null && task.category!.isNotEmpty) ...[
+                      if (task.category != null &&
+                          task.category!.isNotEmpty) ...[
                         const SizedBox(width: 8),
-                        Text('·', style: TextStyle(color: AppColors.textSecondaryOpacity(0.6))),
+                        Text('·',
+                            style: TextStyle(
+                                color: AppColors.textSecondaryOpacity(0.6))),
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
@@ -1873,11 +1941,13 @@ class _TodayClassRow extends StatelessWidget {
   const _TodayClassRow({
     required this.entry,
     required this.primary,
+    required this.scheduleName,
     // required this.onTap,
   });
 
   final TimetableEntry entry;
   final bool primary;
+  final String scheduleName;
   // final VoidCallback onTap;
 
   @override
@@ -1893,156 +1963,183 @@ class _TodayClassRow extends StatelessWidget {
     final accentColor = getEntryColor(entry);
 
     return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                width: 48,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(AppDateFormat.time(entry.startTime),
-                        maxLines: 1,
-                        softWrap: false,
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            decoration: isPast ? TextDecoration.lineThrough : null,
-                            color: isPast ? AppColors.textSecondaryOpacity(0.5) : accentColor)),
-                    Expanded(
-                      child: Container(
-                        width: 3,
-                        margin: const EdgeInsets.symmetric(vertical: 5),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [accentColor, accentColor.withValues(alpha: 0.15)],
-                          ),
-                          borderRadius: BorderRadius.circular(2),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: 48,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(AppDateFormat.time(entry.startTime),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          decoration:
+                              isPast ? TextDecoration.lineThrough : null,
+                          color: isPast
+                              ? AppColors.textSecondaryOpacity(0.5)
+                              : accentColor)),
+                  Expanded(
+                    child: Container(
+                      width: 3,
+                      margin: const EdgeInsets.symmetric(vertical: 5),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            accentColor,
+                            accentColor.withValues(alpha: 0.15)
+                          ],
                         ),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    Text(AppDateFormat.time(entry.endTime),
-                        maxLines: 1,
-                        softWrap: false,
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            decoration: isPast ? TextDecoration.lineThrough : null,
-                            color: isPast ? AppColors.textSecondaryOpacity(0.5) : AppColors.textSecondary)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: accentColor.withValues(alpha: 0.04),
-                      // removed
-                      // removed
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: accentColor.withValues(alpha: 0.15),
-                        // removed
-                        // removed
-                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
+                  Text(AppDateFormat.time(entry.endTime),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          decoration:
+                              isPast ? TextDecoration.lineThrough : null,
+                          color: isPast
+                              ? AppColors.textSecondaryOpacity(0.5)
+                              : AppColors.textSecondary)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.04),
+                  // removed
+                  // removed
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: accentColor.withValues(alpha: 0.15),
+                    // removed
+                    // removed
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(entry.courseName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
+                                  decoration: isPast
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                  color: isPast
+                                      ? AppColors.textSecondaryOpacity(0.5)
+                                      : AppColors.textPrimary)),
+                        ),
+                        if (current)
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.decorNavy,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text('NOW',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
+                                    color: Colors.white)),
+                          )
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      scheduleName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: accentColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (entry.instructor.trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(entry.instructor,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary)),
+                    ],
+                    const SizedBox(height: 8),
+                    if (entry.category != null && entry.category!.isNotEmpty)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: accentColor.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            entry.category!,
+                            maxLines: 1,
+                            softWrap: false,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: accentColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (entry.room?.trim().isNotEmpty == true) ...[
+                      const SizedBox(height: 6),
                       Row(
                         children: [
+                          // Icon removed
+                          const SizedBox(width: 4),
                           Expanded(
-                            child: Text(entry.courseName,
+                            child: Text(entry.room!,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: -0.2,
-                                    decoration: isPast ? TextDecoration.lineThrough : null,
-                                    color: isPast ? AppColors.textSecondaryOpacity(0.5) : AppColors.textPrimary)),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color:
+                                        AppColors.textSecondaryOpacity(0.9))),
                           ),
-                          if (current)
-                            Container(
-                              margin: const EdgeInsets.only(left: 8),
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: AppColors.decorNavy,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text('NOW',
-                                  style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.5,
-                                      color: Colors.white)),
-                            )
                         ],
                       ),
-                      if (entry.instructor.trim().isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(entry.instructor,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textSecondary)),
-                      ],
-                      const SizedBox(height: 8),
-                      if (entry.category != null && entry.category!.isNotEmpty)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: accentColor.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              entry.category!,
-                              maxLines: 1,
-                              softWrap: false,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: accentColor,
-                              ),
-                            ),
-                          ),
-                        ),
-                      if (entry.room?.trim().isNotEmpty == true) ...[
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            // Icon removed
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(entry.room!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.textSecondaryOpacity(0.9))),
-                            ),
-                          ],
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
   }
 }
 

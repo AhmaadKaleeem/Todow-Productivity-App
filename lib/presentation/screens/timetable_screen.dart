@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:todow/core/theme/app_colors.dart';
 import 'package:todow/core/utils/date_format.dart';
@@ -9,9 +10,9 @@ import 'package:todow/presentation/providers/timetable_providers.dart';
 import 'package:todow/presentation/providers/task_providers.dart';
 
 import 'package:todow/presentation/screens/timetable_import_screen.dart';
+import 'package:todow/presentation/screens/app_shell.dart';
 import 'package:todow/presentation/widgets/timetable_editor.dart';
 import 'package:todow/presentation/widgets/timetable_semantics.dart';
-import 'package:todow/presentation/widgets/beautiful_back_button.dart';
 
 const List<Color> _kTimetableColors = [
   Color(0xFF1E3A8A), // deep navy
@@ -27,6 +28,11 @@ const List<Color> _kTimetableColors = [
 
 const Color _kUniversityFallback = Color(0xFF1E3A8A); // deep navy
 const Color _kPersonalFallback = Color(0xFF059669); // emerald
+const Map<String, String> _personalScheduleProfiles = {
+  'Office job': 'A weekly schedule for work and commitments',
+  'Freelance': 'A flexible schedule for client work and projects',
+  'Personal': 'A weekly schedule for the rest of your life',
+};
 
 Color getEntryColor(TimetableEntry entry) {
   if (entry.colorValue != null) return Color(entry.colorValue!);
@@ -42,10 +48,14 @@ class TimetableScreen extends ConsumerStatefulWidget {
   ConsumerState<TimetableScreen> createState() => _TimetableScreenState();
 }
 
-class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsBindingObserver {
+class _TimetableScreenState extends ConsumerState<TimetableScreen>
+    with WidgetsBindingObserver {
   late Weekday _selectedDay;
   late DateTime _selectedDate;
   TimetableKind _selectedKind = TimetableKind.university;
+  String _personalProfileName = 'Personal';
+  String _personalProfileDescription =
+      'Your own schedule for classes, study, and activities';
   _TimetableView _view = _TimetableView.day;
   Timer? _timer;
 
@@ -54,9 +64,107 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
     super.initState();
     _selectedDay = WeekdayExt.fromDartWeekday(DateTime.now().weekday);
     _selectedDate = DateTime.now();
+    _loadPersonalScheduleProfile();
     WidgetsBinding.instance.addObserver(this);
     Future.microtask(_scheduleNextUpdate);
   }
+
+  Future<void> _loadPersonalScheduleProfile() async {
+    final preferences = await SharedPreferences.getInstance();
+    final name = preferences.getString('timetable_personal_profile_name');
+    final description =
+        preferences.getString('timetable_personal_profile_description');
+    if (!mounted || name == null || name.trim().isEmpty) return;
+    setState(() {
+      _personalProfileName = name;
+      _personalProfileDescription = description ?? 'Your weekly schedule';
+    });
+  }
+
+  Future<void> _choosePersonalScheduleProfile() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Choose a schedule profile',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              for (final entry in _personalScheduleProfiles.entries)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(entry.key),
+                  subtitle: Text(entry.value),
+                  trailing: _personalProfileName == entry.key
+                      ? const Icon(Icons.check, color: AppColors.action)
+                      : null,
+                  onTap: () => Navigator.pop(context, entry.key),
+                ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Use a custom name'),
+                onTap: () => Navigator.pop(context, '__custom__'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || selected == null) return;
+
+    String name;
+    String description;
+    if (selected == '__custom__') {
+      final controller = TextEditingController(text: _personalProfileName);
+      final customName = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Name this schedule'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 32,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(hintText: 'For example, Studio'),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () => Navigator.pop(context, controller.text.trim()),
+                child: const Text('Save')),
+          ],
+        ),
+      );
+      controller.dispose();
+      if (!mounted || customName == null || customName.isEmpty) return;
+      name = customName;
+      description = 'Your own weekly schedule';
+    } else {
+      name = selected;
+      description = _personalScheduleProfiles[selected]!;
+    }
+
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString('timetable_personal_profile_name', name);
+    await preferences.setString(
+        'timetable_personal_profile_description', description);
+    if (!mounted) return;
+    ref.invalidate(personalTimetableProfileNameProvider);
+    setState(() {
+      _personalProfileName = name;
+      _personalProfileDescription = description;
+    });
+  }
+
+  String _scheduleNameFor(TimetableKind kind) =>
+      kind == TimetableKind.university ? 'University' : _personalProfileName;
 
   @override
   void dispose() {
@@ -76,23 +184,32 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
     setState(() {});
 
     final now = DateTime.now();
-    final entries = ref.read(timetableForDayProvider((day: _selectedDay, kind: _selectedKind)));
-    
-    if (_view == _TimetableView.day && entries.isNotEmpty && _selectedDate.year == now.year && _selectedDate.day == now.day) {
+    final entries = ref.read(
+        timetableForDayProvider((day: _selectedDay, kind: _selectedKind)));
+
+    if (_view == _TimetableView.day &&
+        entries.isNotEmpty &&
+        _selectedDate.year == now.year &&
+        _selectedDate.day == now.day) {
       final lastEntry = entries.last;
-      final end = DateTime(now.year, now.month, now.day, lastEntry.endTime.hour, lastEntry.endTime.minute);
+      final end = DateTime(now.year, now.month, now.day, lastEntry.endTime.hour,
+          lastEntry.endTime.minute);
       if (now.isAfter(end)) {
         _shiftDay(1);
-        return; 
+        return;
       }
     }
 
     DateTime? nextWake;
     for (final e in entries) {
-      final start = DateTime(now.year, now.month, now.day, e.startTime.hour, e.startTime.minute);
-      if (now.isBefore(start) && (nextWake == null || start.isBefore(nextWake))) nextWake = start;
+      final start = DateTime(
+          now.year, now.month, now.day, e.startTime.hour, e.startTime.minute);
+      if (now.isBefore(start) &&
+          (nextWake == null || start.isBefore(nextWake))) {
+        nextWake = start;
+      }
     }
-    
+
     int delayMs = 3600000;
     final primary = _primaryIndex(entries, _selectedDay);
     if (primary != null && _isCurrent(entries[primary])) {
@@ -100,7 +217,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
     } else if (nextWake != null) {
       delayMs = nextWake.difference(now).inMilliseconds;
     }
-    
+
     if (delayMs > 0) {
       _timer = Timer(Duration(milliseconds: delayMs), _scheduleNextUpdate);
     }
@@ -115,7 +232,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
             ? 'Delete this activity?'
             : 'Delete this class?'),
         content: Text(
-            '${entry.courseName} will be removed from ${entry.weekday.fullLabel} in your ${_scheduleName(entry.scheduleKind).toLowerCase()} timetable.'),
+            '${entry.courseName} will be removed from ${entry.weekday.fullLabel} in your ${_scheduleNameFor(entry.scheduleKind).toLowerCase()} timetable.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -154,7 +271,8 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
           title: entry.courseName,
           description: entry.instructor,
           dueAt: dueAt,
-          category: entry.category ?? 'Personal timetable',
+          category: entry.category ??
+              '${_scheduleNameFor(entry.scheduleKind)} timetable',
         );
     if (!mounted) return;
     await ref.read(timetableProvider.notifier).updateEntry(TimetableEntry(
@@ -204,7 +322,8 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
 
   Future<void> _copyUniversityEntries() async {
     final controller = ref.read(timetableProvider.notifier);
-    final source = ref.read(timetableEntriesForKindProvider(TimetableKind.university));
+    final source =
+        ref.read(timetableEntriesForKindProvider(TimetableKind.university));
     if (source.isEmpty) {
       _showCopyFeedback(
         'Add university classes before copying them.',
@@ -213,7 +332,8 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
       );
       return;
     }
-    final personal = ref.read(timetableEntriesForKindProvider(TimetableKind.personal));
+    final personal =
+        ref.read(timetableEntriesForKindProvider(TimetableKind.personal));
     var copied = 0;
     for (final entry in source) {
       if (personal.any((item) =>
@@ -271,7 +391,8 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
   @override
   Widget build(BuildContext context) {
     final today = WeekdayExt.fromDartWeekday(DateTime.now().weekday);
-    final rawEntries = ref.watch(timetableForDayProvider((day: _selectedDay, kind: _selectedKind)));
+    final rawEntries = ref.watch(
+        timetableForDayProvider((day: _selectedDay, kind: _selectedKind)));
     final entries = rawEntries
         .where((entry) =>
             entry.repeatWeekly ||
@@ -284,8 +405,24 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        leadingWidth: 86,
-        leading: const Center(child: Padding(padding: EdgeInsets.only(left: 16), child: BeautifulBackButton())),
+        leadingWidth: 112,
+        leading: TextButton.icon(
+          onPressed: () {
+            final navigator = Navigator.of(context);
+            if (navigator.canPop()) {
+              navigator.pop();
+            } else {
+              AppShellScope.of(context).selectPage(0);
+            }
+          },
+          icon: const Icon(Icons.arrow_back_rounded, size: 18),
+          label: const Text('Back'),
+          style: TextButton.styleFrom(
+            minimumSize: const Size(104, 48),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            alignment: Alignment.centerLeft,
+          ),
+        ),
         title: const Text('Timetable'),
         actions: [
           IconButton(
@@ -329,7 +466,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
                 ),
                 Expanded(
                   child: _TabButton(
-                    label: 'Personal',
+                    label: _personalProfileName,
                     selected: _selectedKind == TimetableKind.personal,
                     selectedColor: _kPersonalFallback,
                     onTap: () =>
@@ -343,23 +480,37 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                _selectedKind == TimetableKind.university
-                    ? 'University'
-                    : 'Personal',
-                style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.8,
-                    color: _selectedKind == TimetableKind.university
-                        ? _kUniversityFallback
-                        : _kPersonalFallback),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      _selectedKind == TimetableKind.university
+                          ? 'University'
+                          : _personalProfileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.8,
+                          color: _selectedKind == TimetableKind.university
+                              ? _kUniversityFallback
+                              : _kPersonalFallback),
+                    ),
+                  ),
+                  if (_selectedKind == TimetableKind.personal)
+                    TextButton(
+                      onPressed: _choosePersonalScheduleProfile,
+                      child: const Text('Change profile'),
+                    ),
+                ],
               ),
               const SizedBox(height: 5),
               Text(
                 _selectedKind == TimetableKind.university
                     ? 'Weekly repeating schedule'
-                    : 'Your own schedule for classes, study, and activities',
+                    : _personalProfileDescription,
                 style: const TextStyle(
                     fontSize: 13, color: AppColors.textSecondary),
               ),
@@ -495,7 +646,8 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
                         item.$1 == primaryIndex ? _currentState(item.$2) : null,
                     isPast: _isPast(item.$2, _selectedDate),
                     onEdit: () => _edit(item.$2),
-                    onDelete: () => _delete(ref.read(timetableProvider.notifier), item.$2),
+                    onDelete: () =>
+                        _delete(ref.read(timetableProvider.notifier), item.$2),
                     onCreateTask: () => _createTaskFromEntry(item.$2),
                   )),
           ] else ...[
@@ -503,9 +655,15 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
               _WeekdaySection(
                 day: day,
                 entries: _entriesForWeekday(day),
-                isPastList: _entriesForWeekday(day).map((e) => _isPast(e, DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day).subtract(Duration(days: _selectedDate.weekday - 1)).add(Duration(days: day.index)))).toList(),
-                primaryIndex:
-                    _primaryIndex(_entriesForWeekday(day), day),
+                isPastList: _entriesForWeekday(day)
+                    .map((e) => _isPast(
+                        e,
+                        DateTime(_selectedDate.year, _selectedDate.month,
+                                _selectedDate.day)
+                            .subtract(Duration(days: _selectedDate.weekday - 1))
+                            .add(Duration(days: day.index))))
+                    .toList(),
+                primaryIndex: _primaryIndex(_entriesForWeekday(day), day),
                 onOpenDay: () => setState(() {
                   _selectedDay = day;
                   final offset = day.index - _selectedDay.index;
@@ -531,16 +689,27 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
 
   bool _isCurrent(TimetableEntry entry) {
     final now = DateTime.now();
-    if (_selectedDate.year != now.year || _selectedDate.month != now.month || _selectedDate.day != now.day) return false;
-    final start = DateTime(now.year, now.month, now.day, entry.startTime.hour, entry.startTime.minute);
-    final end = DateTime(now.year, now.month, now.day, entry.endTime.hour, entry.endTime.minute);
+    if (_selectedDate.year != now.year ||
+        _selectedDate.month != now.month ||
+        _selectedDate.day != now.day) {
+      return false;
+    }
+    final start = DateTime(now.year, now.month, now.day, entry.startTime.hour,
+        entry.startTime.minute);
+    final end = DateTime(
+        now.year, now.month, now.day, entry.endTime.hour, entry.endTime.minute);
     return !now.isBefore(start) && now.isBefore(end);
   }
 
   bool _isPast(TimetableEntry entry, DateTime dateOfEntry) {
     final now = DateTime.now();
-    if (dateOfEntry.year != now.year || dateOfEntry.month != now.month || dateOfEntry.day != now.day) return false;
-    final end = DateTime(now.year, now.month, now.day, entry.endTime.hour, entry.endTime.minute);
+    if (dateOfEntry.year != now.year ||
+        dateOfEntry.month != now.month ||
+        dateOfEntry.day != now.day) {
+      return false;
+    }
+    final end = DateTime(
+        now.year, now.month, now.day, entry.endTime.hour, entry.endTime.minute);
     return now.isAfter(end);
   }
 
@@ -549,16 +718,15 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> with WidgetsB
         DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day)
             .subtract(Duration(days: _selectedDate.weekday - 1));
     final weekEnd = weekStart.add(const Duration(days: 7));
-    return ref.watch(timetableForDayProvider((day: day, kind: _selectedKind))).where((entry) {
+    return ref
+        .watch(timetableForDayProvider((day: day, kind: _selectedKind)))
+        .where((entry) {
       final date = entry.scheduledDate;
       return entry.repeatWeekly ||
           (date != null && !date.isBefore(weekStart) && date.isBefore(weekEnd));
     }).toList();
   }
 }
-
-String _scheduleName(TimetableKind kind) =>
-    kind == TimetableKind.university ? 'University' : 'Personal';
 
 class _TabButton extends StatelessWidget {
   const _TabButton({
@@ -578,7 +746,7 @@ class _TabButton extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
-        height: 40,
+        height: 48,
         decoration: BoxDecoration(
           color: selected ? selectedColor : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
@@ -586,6 +754,9 @@ class _TabButton extends StatelessWidget {
         alignment: Alignment.center,
         child: Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 14,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
@@ -733,8 +904,12 @@ class _WeekdaySection extends StatelessWidget {
                                       fontWeight: i == primaryIndex
                                           ? FontWeight.w700
                                           : FontWeight.w500,
-                                      decoration: isPastList[i] ? TextDecoration.lineThrough : null,
-                                      color: isPastList[i] ? AppColors.textSecondaryOpacity(0.5) : AppColors.textPrimary)),
+                                      decoration: isPastList[i]
+                                          ? TextDecoration.lineThrough
+                                          : null,
+                                      color: isPastList[i]
+                                          ? AppColors.textSecondaryOpacity(0.5)
+                                          : AppColors.textPrimary)),
                             ),
                             Container(
                               width: 4,
@@ -765,8 +940,13 @@ class _WeekdaySection extends StatelessWidget {
                                           fontWeight: i == primaryIndex
                                               ? FontWeight.w700
                                               : FontWeight.w600,
-                                          decoration: isPastList[i] ? TextDecoration.lineThrough : null,
-                                          color: isPastList[i] ? AppColors.textSecondaryOpacity(0.5) : AppColors.textPrimary)),
+                                          decoration: isPastList[i]
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                          color: isPastList[i]
+                                              ? AppColors.textSecondaryOpacity(
+                                                  0.5)
+                                              : AppColors.textPrimary)),
                                   Text(
                                       timetableTypeLabel(entries[i].category,
                                           entries[i].scheduleKind),
@@ -876,7 +1056,9 @@ class _ClassCard extends StatelessWidget {
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         decoration: isPast ? TextDecoration.lineThrough : null,
-                        color: isPast ? AppColors.textSecondaryOpacity(0.5) : accentColor)),
+                        color: isPast
+                            ? AppColors.textSecondaryOpacity(0.5)
+                            : accentColor)),
                 Expanded(
                   child: Container(
                     width: 3,
@@ -934,8 +1116,13 @@ class _ClassCard extends StatelessWidget {
                                             fontSize: 16,
                                             fontWeight: FontWeight.w700,
                                             letterSpacing: -0.2,
-                                            decoration: isPast ? TextDecoration.lineThrough : null,
-                                            color: isPast ? AppColors.textSecondaryOpacity(0.5) : AppColors.textPrimary)),
+                                            decoration: isPast
+                                                ? TextDecoration.lineThrough
+                                                : null,
+                                            color: isPast
+                                                ? AppColors
+                                                    .textSecondaryOpacity(0.5)
+                                                : AppColors.textPrimary)),
                                   ),
                                   if (emphasis == 'NOW')
                                     Container(

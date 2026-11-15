@@ -290,7 +290,7 @@ class AppShellState extends ConsumerState<AppShell>
                                 const SizedBox(
                                   width: 104,
                                   child: Text(
-                                    'v1.0.2',
+                                    'v1.3.0',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: AppColors.textSecondary,

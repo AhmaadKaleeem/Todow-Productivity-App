@@ -33,6 +33,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
   final FocusActivityStore _activityStore = FocusActivityStore();
   FocusActivitySettings _activitySettings = const FocusActivitySettings();
   FocusActivityTemplate? _selectedTemplate;
+  bool _showAllActivities = false;
   Duration _customDuration = const Duration(minutes: 50);
   String? _taskId;
   bool _zenMode = false;
@@ -158,6 +159,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
       setState(() {
         _activityCategory = category;
         _selectedTemplate = null;
+        _showAllActivities = false;
       });
       return;
     }
@@ -165,6 +167,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
     setState(() {
       _activityCategory = category;
       _selectedTemplate = null;
+      _showAllActivities = false;
       _preset = first;
       _customDuration = Duration(minutes: _activitySettings.durationFor(first));
       _manualTimeController.text = '${_customDuration.inMinutes}';
@@ -235,9 +238,33 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                         _buildHeroCard(),
                         const SizedBox(height: 20),
                       ],
-                      _buildSectionTitle(session != null
-                          ? 'CHOOSE NEXT ENVIRONMENT'
-                          : 'FOCUS ACTIVITY'),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSectionTitle(session != null
+                                ? 'CHOOSE NEXT ENVIRONMENT'
+                                : 'FOCUS ACTIVITY'),
+                          ),
+                          TextButton.icon(
+                            onPressed: () => _onActivityCategorySelected(
+                              FocusActivityCategory.userActivities,
+                            ),
+                            icon:
+                                const Icon(Icons.bookmarks_outlined, size: 17),
+                            label: const Text('My activities'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: _activityCategory ==
+                                      FocusActivityCategory.userActivities
+                                  ? AppColors.action
+                                  : AppColors.textSecondary,
+                              minimumSize: const Size(48, 48),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 10),
                       _buildPresetGrid(),
                       const SizedBox(height: 16),
@@ -547,39 +574,66 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
     final isCustom = _activityCategory == FocusActivityCategory.userActivities;
     final activities = isCustom
         ? const <FocusActivityDefinition>[]
-        : FocusActivityDefinition.inCategory(_activityCategory);
+        : _activitiesForCategory(_activityCategory);
     final customActivities = _activitySettings.customActivities;
+    final visibleActivities = _showAllActivities || activities.length <= 2
+        ? activities
+        : activities.take(2).toList();
+    final visibleCustomActivities =
+        _showAllActivities || customActivities.length <= 2
+            ? customActivities
+            : customActivities.take(2).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: FocusActivityCategory.values.map((category) {
-            return ChoiceChip(
-              label: Text(category.label),
-              selected: _activityCategory == category,
-              onSelected: (_) => _onActivityCategorySelected(category),
-              showCheckmark: false,
-              visualDensity: VisualDensity.compact,
-              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              shape: const StadiumBorder(),
-              selectedColor: AppColors.action.withValues(alpha: 0.14),
-              side: BorderSide(
-                color: _activityCategory == category
-                    ? AppColors.action
-                    : AppColors.divider,
-              ),
-              labelStyle: TextStyle(
-                color: _activityCategory == category
-                    ? AppColors.action
-                    : AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-            );
-          }).toList(),
+        SizedBox(
+          height: 48,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: FocusActivityCategory.values
+                .where((category) =>
+                    category != FocusActivityCategory.analyticalWork &&
+                    category != FocusActivityCategory.userActivities)
+                .map((category) {
+              final selected = _activityCategory == category;
+              return Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Semantics(
+                  button: true,
+                  selected: selected,
+                  child: InkWell(
+                    onTap: () => _onActivityCategorySelected(category),
+                    child: Container(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: selected
+                                ? AppColors.action
+                                : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      alignment: Alignment.center,
+                      child: Text(
+                        category.label,
+                        style: TextStyle(
+                          color: selected
+                              ? AppColors.action
+                              : AppColors.textSecondary,
+                          fontWeight:
+                              selected ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ),
         const SizedBox(height: 12),
         if (isCustom) ...[
@@ -605,9 +659,13 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
               ),
             )
           else
-            ...customActivities.map(_buildCustomActivityOption),
+            ...visibleCustomActivities.map(_buildCustomActivityOption),
+          if (isCustom && customActivities.length > 2)
+            _buildActivityListToggle(customActivities.length),
         ] else
-          ...activities.map(_buildActivityOption),
+          ...visibleActivities.map(_buildActivityOption),
+        if (!isCustom && activities.length > 2)
+          _buildActivityListToggle(activities.length),
         const SizedBox(height: 12),
         FocusActivityScene(
           preset: _preset,
@@ -626,9 +684,11 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
         Text(
           _selectedTemplate == null
               ? FocusActivityDefinition.forActivity(_preset).description
-              : _selectedTemplate!.categoryLabel.isEmpty
-                  ? 'A custom activity in your saved collection.'
-                  : _selectedTemplate!.categoryLabel,
+              : _selectedTemplate!.visualPreset == null
+                  ? 'A mixed workspace built for ${_selectedTemplate!.name}.'
+                  : FocusActivityDefinition.forActivity(
+                      _selectedTemplate!.visualPreset!,
+                    ).description,
           style: const TextStyle(
             color: AppColors.textSecondary,
             fontSize: 13,
@@ -640,6 +700,40 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
           _buildUltradianCard(),
         ],
       ],
+    );
+  }
+
+  List<FocusActivityDefinition> _activitiesForCategory(
+    FocusActivityCategory category,
+  ) {
+    final activities = FocusActivityDefinition.inCategory(category);
+    if (category != FocusActivityCategory.development) return activities;
+    return [
+      ...activities,
+      ...FocusActivityDefinition.inCategory(
+          FocusActivityCategory.analyticalWork),
+    ];
+  }
+
+  Widget _buildActivityListToggle(int total) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: () =>
+            setState(() => _showAllActivities = !_showAllActivities),
+        icon: Icon(
+          _showAllActivities
+              ? Icons.expand_less_rounded
+              : Icons.expand_more_rounded,
+          size: 18,
+        ),
+        label: Text(_showAllActivities ? 'Show less' : 'See ${total - 2} more'),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.action,
+          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+        ),
+      ),
     );
   }
 
@@ -682,8 +776,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                       Text(
                         preset.label,
                         style: TextStyle(
-                          color:
-                              selected ? Colors.white : AppColors.textPrimary,
+                          color: AppColors.textPrimary,
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                         ),
@@ -691,12 +784,14 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                       const SizedBox(height: 2),
                       Text(
                         workSurface,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: selected
-                              ? Colors.white70
+                              ? AppColors.textPrimary
                               : AppColors.textSecondary,
-                          fontSize: 9,
-                          letterSpacing: 0.25,
+                          fontSize: 10,
+                          letterSpacing: 0.15,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -707,7 +802,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                 Text(
                   '${selected ? _customDuration.inMinutes : _activitySettings.durationFor(preset)}m',
                   style: TextStyle(
-                    color: selected ? Colors.white : AppColors.textSecondary,
+                    color: selected
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -717,7 +814,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                   selected
                       ? Icons.radio_button_checked
                       : Icons.radio_button_off,
-                  color: selected ? Colors.white : AppColors.divider,
+                  color: selected
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
                   size: 18,
                 ),
               ],
@@ -763,31 +862,20 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color:
-                              selected ? Colors.white : AppColors.textPrimary,
+                          color: AppColors.textPrimary,
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      if (activity.categoryLabel.isNotEmpty)
-                        Text(
-                          activity.categoryLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: selected
-                                ? Colors.white70
-                                : AppColors.textSecondary,
-                            fontSize: 11,
-                          ),
-                        ),
                     ],
                   ),
                 ),
                 Text(
                   '${selected ? _customDuration.inMinutes : activity.defaultDurationMinutes}m',
                   style: TextStyle(
-                    color: selected ? Colors.white : AppColors.textSecondary,
+                    color: selected
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -796,7 +884,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                   tooltip: 'Activity options',
                   icon: Icon(
                     Icons.more_vert,
-                    color: selected ? Colors.white : AppColors.textSecondary,
+                    color: AppColors.textSecondary,
                   ),
                   onSelected: (action) {
                     if (action == 'edit') _editCustomActivity(activity);
@@ -1042,7 +1130,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
 
   LinearGradient _gradientPalette(int index) => switch (index) {
         0 => const LinearGradient(
-            colors: [AppColors.action, Color(0xFF0284C7)],
+            colors: [AppColors.action, Color(0xFF38BDF8)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -1281,11 +1369,6 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                 width: 72,
                 height: 38,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceElevated,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.divider),
-                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

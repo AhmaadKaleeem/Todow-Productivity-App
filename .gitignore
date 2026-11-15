@@ -37,6 +37,7 @@ android/.gradle/
 android/build/
 ios/Pods/
 coverage/
+.impeccable/
 
 # Symbolication related
 app.*.symbols

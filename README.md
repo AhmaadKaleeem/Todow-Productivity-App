@@ -19,7 +19,7 @@ Todow is a local-first planner for study, work, and personal tasks. Create tasks
 - **Today dashboard** View overdue and upcoming tasks, active reminders, focus sessions, and today's classes.
 - **Roadmaps** Organize work into ordered Topics with tasks and progress. Import and export roadmaps as CSV or Excel files.
 - **Timetable** Add weekly university classes and personal plans. Import schedules from CSV or Excel, or scan a schedule image into an editable draft.
-- **Focus mode** Choose activity-specific environments for development, learning, creative work, professional work, personal growth, and analysis. Each scene progresses in proportion to the selected session duration and stays synchronized across pauses and app backgrounding. Save custom activities with optional groups and subgroups, use an automatically matched or mixed environment, and set default durations for built-in or custom activities.
+- **Focus mode** Browse five compact activity categories, with two activities shown at a time and more available on demand. Technical work combines development and analysis; saved activities have their own view. Each activity has a purpose-built environment that progresses with the session and stays synchronized across pauses and app backgrounding. Set optional groups, subgroups, and default durations for saved activities.
 
 ### In Progress
 - **Rest-Time Ambient Music** Built-in restorative audio soundscapes and rest music during the 20-minute recovery interval, selectable by the user.

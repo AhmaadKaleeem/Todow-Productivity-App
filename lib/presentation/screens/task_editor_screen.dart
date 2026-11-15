@@ -7,7 +7,6 @@ import 'package:todow/domain/models/reminder.dart';
 import 'package:todow/domain/models/roadmap.dart';
 import 'package:todow/domain/models/subtask.dart';
 import 'package:todow/domain/models/task.dart';
-import 'package:todow/domain/reminders/reminder_presets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/presentation/providers/timetable_providers.dart';
 import 'package:todow/presentation/providers/task_providers.dart';
@@ -132,8 +131,9 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
     _subtasks = List.of(_workingTask?.subtasks ?? []);
     _reminderPlan = _workingTask?.reminderPlan ??
         ReminderPlan(
-          preset: ReminderPreset.normal,
-          offsets: ReminderPresets.forPreset(ReminderPreset.normal),
+          preset: ReminderPreset.custom,
+          offsets: const [],
+          customOffsets: const [],
           constantReminder: false,
         );
 
@@ -737,8 +737,12 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
                       dueAt: _dueAt,
                       priority: _priority,
                       project: _selectedRoadmap,
-                      remindersOn: _reminderPlan.allOffsets.isNotEmpty ||
-                          _reminderPlan.constantReminder,
+                      remindersOn: _reminderPlan.dailyReminderMinutes != null ||
+                          (_dueAt != null &&
+                              _reminderPlan.allOffsets.isNotEmpty),
+                      remindersNeedDate: _dueAt == null &&
+                          _reminderPlan.allOffsets.isNotEmpty &&
+                          _reminderPlan.dailyReminderMinutes == null,
                       subtaskCount: _subtasks.length,
                       showProject: !_isRoadmapTask,
                       showSubject: !_isRoadmapTask &&
@@ -838,10 +842,7 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
                           plan: _reminderPlan,
                           dueAt: _dueAt,
                           onChanged: (p) => setState(() => _reminderPlan = p),
-                          onSetDueDate: () => setState(() {
-                            _remindersExpanded = false;
-                            _schedExpanded = true;
-                          }),
+                          onSetDueDate: _pickDate,
                         ),
                       ),
                     ),
@@ -1214,6 +1215,7 @@ class _ControlStrip extends StatelessWidget {
     required this.priority,
     required this.project,
     required this.remindersOn,
+    required this.remindersNeedDate,
     required this.subtaskCount,
     required this.showProject,
     required this.showSubject,
@@ -1236,6 +1238,7 @@ class _ControlStrip extends StatelessWidget {
   final TaskPriority priority;
   final String project;
   final bool remindersOn;
+  final bool remindersNeedDate;
   final int subtaskCount;
   final bool showProject;
   final bool showSubject;
@@ -1300,8 +1303,12 @@ class _ControlStrip extends StatelessWidget {
             ),
           // Reminders chip
           _StripChip(
-            label: remindersOn ? 'Reminders - On' : 'Reminders',
-            active: remindersExpanded || remindersOn,
+            label: remindersOn
+                ? 'Reminders · On'
+                : remindersNeedDate
+                    ? 'Reminders · Set date'
+                    : 'Reminders · Off',
+            active: remindersExpanded || remindersOn || remindersNeedDate,
             expanded: remindersExpanded,
             activeColor: AppColors.attention,
             onTap: onRemindersTap,

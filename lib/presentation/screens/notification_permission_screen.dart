@@ -62,38 +62,6 @@ class _NotificationPermissionScreenState
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.action.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppColors.action.withValues(alpha: 0.24),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.notifications_active_outlined,
-                              size: 15,
-                              color: AppColors.action,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Your task reminders',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.action.withValues(alpha: 0.95),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                       TextButton(
                         onPressed: () => Navigator.pop(context),
                         style: TextButton.styleFrom(

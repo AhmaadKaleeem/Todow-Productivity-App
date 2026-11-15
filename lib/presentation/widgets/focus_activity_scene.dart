@@ -88,27 +88,20 @@ class FocusActivityScene extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  Positioned(
-                    left: 12,
-                    right: 12,
-                    top: 12,
-                    child: Row(
-                      children: [
-                        Flexible(
-                          child: _SceneLabel(
-                            text: (activityLabel ?? preset.label).toUpperCase(),
-                          ),
+                  if (showPhaseLabel)
+                    Positioned(
+                      right: 14,
+                      top: 14,
+                      child: Text(
+                        _phaseLabel(timeline.phase),
+                        style: TextStyle(
+                          color: _phaseColor(timeline.phase),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
                         ),
-                        if (showPhaseLabel) ...[
-                          const SizedBox(width: 8),
-                          _SceneLabel(
-                            text: _phaseLabel(timeline.phase),
-                            accent: _phaseColor(timeline.phase),
-                          ),
-                        ],
-                      ],
+                      ),
                     ),
-                  ),
                   if (compact)
                     Positioned(
                       left: 0,
@@ -146,36 +139,6 @@ class FocusActivityScene extends StatelessWidget {
       ),
     );
   }
-}
-
-class _SceneLabel extends StatelessWidget {
-  const _SceneLabel({required this.text, this.accent = AppColors.textPrimary});
-
-  final String text;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-        decoration: BoxDecoration(
-          color: const Color(0xFFFDFBF6),
-          border: Border.all(color: AppColors.divider),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: accent,
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-      );
 }
 
 class _FocusEnvironmentPainter extends CustomPainter {
@@ -436,22 +399,22 @@ class _FocusEnvironmentPainter extends CustomPainter {
   void _paintStudy(Canvas canvas, Size size, double progress, Color accent) {
     for (var i = 0; i < 3; i++) {
       final rect = _card(canvas, size, 0.13 + i * 0.17,
-          0.32 + (i.isOdd ? 0.03 : 0), 0.13, 0.24, const Color(0xFFFFFCF5));
-      _text(canvas, ['?', 'A', '✓'][i], Offset(rect.left + 14, rect.top + 22),
-          i == 2 ? const Color(0xFF66836F) : accent, 20);
-      _lines(canvas, rect, 0.08, 0.61, 0.68, 2, 9, const Color(0xFFC9D2C7));
+          0.28 + (i.isOdd ? 0.03 : 0), 0.13, 0.30, const Color(0xFFFFFCF5));
+      _text(canvas, ['?', 'A', '✓'][i], Offset(rect.left + 14, rect.top + 15),
+          i == 2 ? const Color(0xFF66836F) : accent, 18);
+      _lines(canvas, rect, 0.08, 0.77, 0.68, 2, 7, const Color(0xFFC9D2C7));
     }
   }
 
   void _paintReading(Canvas canvas, Size size, double progress, Color accent) {
     final leftPage =
-        _card(canvas, size, 0.13, 0.28, 0.26, 0.34, const Color(0xFFFFFCF2));
+        _card(canvas, size, 0.13, 0.24, 0.26, 0.40, const Color(0xFFFFFCF2));
     final rightPage =
-        _card(canvas, size, 0.39, 0.28, 0.26, 0.34, const Color(0xFFFFFCF2));
-    _text(canvas, 'CHAPTER 04', Offset(leftPage.left + 14, leftPage.top + 18),
+        _card(canvas, size, 0.39, 0.24, 0.26, 0.40, const Color(0xFFFFFCF2));
+    _text(canvas, 'CHAPTER 04', Offset(leftPage.left + 14, leftPage.top + 14),
         const Color(0xFF7D705F), 8);
-    _lines(canvas, leftPage, 0.09, 0.34, 0.78, 6, 12, const Color(0xFFBEB4A3));
-    _lines(canvas, rightPage, 0.09, 0.34, 0.78, 6, 12, const Color(0xFFBEB4A3));
+    _lines(canvas, leftPage, 0.09, 0.32, 0.78, 4, 10, const Color(0xFFBEB4A3));
+    _lines(canvas, rightPage, 0.09, 0.32, 0.78, 4, 10, const Color(0xFFBEB4A3));
     final marker = leftPage.left + leftPage.width + rightPage.width * progress;
     canvas.drawRect(
         Rect.fromLTWH(marker, leftPage.top - 4, 3, leftPage.height + 8),
@@ -460,25 +423,26 @@ class _FocusEnvironmentPainter extends CustomPainter {
 
   void _paintLecture(Canvas canvas, Size size, double progress, Color accent) {
     final slide =
-        _panel(canvas, size, 0.10, 0.25, 0.34, 0.36, const Color(0xFFE7E9E2));
-    _text(canvas, 'LECTURE NOTES', Offset(slide.left + 12, slide.top + 15),
+        _panel(canvas, size, 0.10, 0.22, 0.34, 0.42, const Color(0xFFE7E9E2));
+    _text(canvas, 'LECTURE NOTES', Offset(slide.left + 12, slide.top + 13),
         const Color(0xFF6B796F), 8);
-    _lines(canvas, slide, 0.10, 0.31, 0.76, 5, 15, const Color(0xFFAAB4A8));
+    _lines(canvas, slide, 0.10, 0.31, 0.76, 4, 11, const Color(0xFFAAB4A8));
     final notes =
-        _card(canvas, size, 0.50, 0.31, 0.19, 0.29, const Color(0xFFFFFCF5));
+        _card(canvas, size, 0.50, 0.28, 0.19, 0.38, const Color(0xFFFFFCF5));
     _text(
         canvas, 'KEY IDEAS', Offset(notes.left + 9, notes.top + 15), accent, 8);
-    _lines(canvas, notes, 0.12, 0.43, 0.72, 4, 13, const Color(0xFFBEB4A3));
+    _lines(canvas, notes, 0.12, 0.40, 0.72, 3, 10, const Color(0xFFBEB4A3));
     _underline(canvas, notes, progress, accent);
   }
 
   void _paintExam(Canvas canvas, Size size, double progress, Color accent) {
     final sheet =
-        _card(canvas, size, 0.14, 0.23, 0.38, 0.45, const Color(0xFFFFFCF6));
-    _text(canvas, 'PRACTICE PAPER', Offset(sheet.left + 14, sheet.top + 17),
+        _card(canvas, size, 0.14, 0.18, 0.38, 0.56, const Color(0xFFFFFCF6));
+    _text(canvas, 'PRACTICE PAPER', Offset(sheet.left + 14, sheet.top + 14),
         const Color(0xFF786B5E), 8);
+    final rowStep = (sheet.height - 36) / 5;
     for (var i = 0; i < 5; i++) {
-      final y = sheet.top + 43 + i * 21;
+      final y = sheet.top + 27 + (i + 0.5) * rowStep;
       canvas.drawCircle(
           Offset(sheet.left + 15, y),
           4,
@@ -494,42 +458,42 @@ class _FocusEnvironmentPainter extends CustomPainter {
   void _paintMathematics(
       Canvas canvas, Size size, double progress, Color accent) {
     final page =
-        _card(canvas, size, 0.13, 0.23, 0.48, 0.44, const Color(0xFFFFFCF6));
-    _text(canvas, 'f(x) = x² + 2x + 1', Offset(page.left + 16, page.top + 28),
+        _card(canvas, size, 0.13, 0.18, 0.48, 0.56, const Color(0xFFFFFCF6));
+    _text(canvas, 'f(x) = x² + 2x + 1', Offset(page.left + 16, page.top + 20),
         const Color(0xFF65766B), 13);
-    _text(canvas, '∴  f(x) = (x + 1)²', Offset(page.left + 16, page.top + 69),
+    _text(canvas, '∴  f(x) = (x + 1)²', Offset(page.left + 16, page.top + 48),
         accent, 12);
-    _text(canvas, 'DERIVATION', Offset(page.left + 16, page.top + 110),
+    _text(canvas, 'DERIVATION', Offset(page.left + 16, page.top + 66),
         const Color(0xFF8A8175), 9);
     _underline(canvas, page, progress, accent);
   }
 
   void _paintPaper(Canvas canvas, Size size, double progress, Color accent) {
     final page =
-        _card(canvas, size, 0.15, 0.22, 0.36, 0.48, const Color(0xFFFFFCF6));
+        _card(canvas, size, 0.15, 0.18, 0.36, 0.60, const Color(0xFFFFFCF6));
     _text(canvas, 'RESULTS', Offset(page.left + 16, page.top + 18),
         const Color(0xFF786B5E), 8);
-    _lines(canvas, page, 0.10, 0.30, 0.74, 6, 16, const Color(0xFFB8B1A6));
+    _lines(canvas, page, 0.10, 0.30, 0.74, 6, 12, const Color(0xFFB8B1A6));
     final margin =
-        _card(canvas, size, 0.53, 0.30, 0.16, 0.30, const Color(0xFFE8ECE5));
+        _card(canvas, size, 0.53, 0.26, 0.16, 0.42, const Color(0xFFE8ECE5));
     _text(canvas, 'CLAIM', Offset(margin.left + 8, margin.top + 14), accent, 8);
-    _text(canvas, 'METHOD', Offset(margin.left + 8, margin.top + 58),
+    _text(canvas, 'METHOD', Offset(margin.left + 8, margin.top + 34),
         const Color(0xFF6D7D70), 8);
-    _text(canvas, 'EVIDENCE', Offset(margin.left + 8, margin.bottom - 24),
+    _text(canvas, 'EVIDENCE', Offset(margin.left + 8, margin.bottom - 15),
         const Color(0xFF6D7D70), 8);
     _progressCaret(canvas, margin, progress, accent);
   }
 
   void _paintWriting(Canvas canvas, Size size, double progress, Color accent) {
     final page =
-        _card(canvas, size, 0.15, 0.22, 0.48, 0.47, const Color(0xFFFFFCF6));
+        _card(canvas, size, 0.15, 0.18, 0.48, 0.60, const Color(0xFFFFFCF6));
     _text(canvas, 'Untitled draft', Offset(page.left + 18, page.top + 20),
         const Color(0xFF756A5D), 9);
-    _lines(canvas, page, 0.11, 0.33, 0.74, 7, 17, const Color(0xFFB9B1A4));
+    _lines(canvas, page, 0.11, 0.33, 0.74, 5, 11, const Color(0xFFB9B1A4));
     canvas.drawLine(
-        Offset(page.left + 18, page.bottom - 30),
+        Offset(page.left + 18, page.bottom - 12),
         Offset(page.left + 18 + page.width * (0.25 + progress * 0.53),
-            page.bottom - 30),
+            page.bottom - 12),
         Paint()
           ..color = accent
           ..strokeWidth = 2);
@@ -537,21 +501,20 @@ class _FocusEnvironmentPainter extends CustomPainter {
 
   void _paintDesign(Canvas canvas, Size size, double progress, Color accent) {
     for (var i = 0; i < 3; i++) {
-      final frame = _card(canvas, size, 0.12 + i * 0.18, 0.23 + i % 2 * 0.05,
-          0.15, 0.37, const Color(0xFFFFFCF6));
+      final frame = _card(canvas, size, 0.12 + i * 0.18, 0.20 + i % 2 * 0.04,
+          0.15, 0.42, const Color(0xFFFFFCF6));
       canvas.drawRect(
-          Rect.fromLTWH(frame.left + 8, frame.top + 18, frame.width - 16, 36),
+          Rect.fromLTWH(frame.left + 8, frame.top + 12, frame.width - 16, 24),
           Paint()
             ..color = [
               const Color(0xFFDDE6E1),
               const Color(0xFFEADFCF),
               const Color(0xFFE0E3EA)
             ][i]);
-      _lines(canvas, frame, 0.12, 0.48 + i % 2 * 0.05, 0.70, 3, 14,
-          const Color(0xFFBEB4A3));
+      _lines(canvas, frame, 0.12, 0.62, 0.70, 2, 8, const Color(0xFFBEB4A3));
     }
     _text(canvas, 'GRID  ·  TYPE  ·  SPACE',
-        Offset(size.width * 0.12, size.height * 0.66), accent, 8);
+        Offset(size.width * 0.12, size.height * 0.72), accent, 8);
   }
 
   void _paintDrawing(Canvas canvas, Size size, double progress, Color accent) {
@@ -585,9 +548,10 @@ class _FocusEnvironmentPainter extends CustomPainter {
 
   void _paintMusic(Canvas canvas, Size size, double progress, Color accent) {
     final score =
-        _card(canvas, size, 0.11, 0.23, 0.42, 0.43, const Color(0xFFFFFCF6));
+        _card(canvas, size, 0.11, 0.18, 0.42, 0.56, const Color(0xFFFFFCF6));
+    final staffStep = (score.height - 30) / 4;
     for (var i = 0; i < 5; i++) {
-      final y = score.top + 42 + i * 13;
+      final y = score.top + 16 + i * staffStep;
       canvas.drawLine(Offset(score.left + 12, y), Offset(score.right - 12, y),
           Paint()..color = const Color(0xFFC8C0B3));
     }
@@ -607,7 +571,7 @@ class _FocusEnvironmentPainter extends CustomPainter {
     _text(
         canvas,
         'MOTIF  →  PHRASE  →  ARRANGEMENT',
-        Offset(size.width * 0.12, size.height * 0.68),
+        Offset(size.width * 0.12, size.height * 0.75),
         const Color(0xFF766E62),
         8);
   }
@@ -634,12 +598,12 @@ class _FocusEnvironmentPainter extends CustomPainter {
   void _paintAssignment(
       Canvas canvas, Size size, double progress, Color accent) {
     final sheet =
-        _card(canvas, size, 0.13, 0.22, 0.40, 0.48, const Color(0xFFFFFCF6));
-    _text(canvas, 'ARGUMENT / OUTLINE', Offset(sheet.left + 16, sheet.top + 18),
+        _card(canvas, size, 0.13, 0.16, 0.40, 0.62, const Color(0xFFFFFCF6));
+    _text(canvas, 'ARGUMENT / OUTLINE', Offset(sheet.left + 16, sheet.top + 14),
         const Color(0xFF766B5E), 8);
     const labels = ['Question', 'Evidence', 'Reasoning', 'Draft', 'Revise'];
     for (var i = 0; i < labels.length; i++) {
-      final y = sheet.top + 48 + i * 27;
+      final y = sheet.top + 30 + i * 14;
       canvas.drawCircle(
           Offset(sheet.left + 17, y),
           5,
@@ -654,61 +618,60 @@ class _FocusEnvironmentPainter extends CustomPainter {
 
   void _paintDeepWork(Canvas canvas, Size size, double progress, Color accent) {
     final sheet =
-        _card(canvas, size, 0.15, 0.24, 0.44, 0.44, const Color(0xFFFAF8EF));
-    _text(canvas, 'ONE THING', Offset(sheet.left + 18, sheet.top + 24),
+        _card(canvas, size, 0.15, 0.20, 0.44, 0.58, const Color(0xFFFAF8EF));
+    _text(canvas, 'ONE THING', Offset(sheet.left + 18, sheet.top + 19),
         const Color(0xFF786D5E), 9);
     canvas.drawLine(
-        Offset(sheet.left + 18, sheet.top + 62),
-        Offset(sheet.right - 18, sheet.top + 62),
+        Offset(sheet.left + 18, sheet.top + 48),
+        Offset(sheet.right - 18, sheet.top + 48),
         Paint()
           ..color = const Color(0xFFBFC0B2)
           ..strokeWidth = 2);
     canvas.drawLine(
-        Offset(sheet.left + 18, sheet.top + 100),
-        Offset(sheet.left + 18 + sheet.width * 0.35, sheet.top + 100),
+        Offset(sheet.left + 18, sheet.top + 68),
+        Offset(sheet.left + 18 + sheet.width * 0.35, sheet.top + 68),
         Paint()
           ..color = accent
           ..strokeWidth = 3);
-    _text(canvas, 'ONE THING', Offset(sheet.left + 18, sheet.bottom - 22),
+    _text(canvas, 'ONE THING', Offset(sheet.left + 18, sheet.bottom - 15),
         const Color(0xFF7E8C7A), 9);
   }
 
   void _paintUltradian(
       Canvas canvas, Size size, double progress, Color accent) {
     final strip =
-        _card(canvas, size, 0.12, 0.31, 0.52, 0.27, const Color(0xFFE8ECE5));
+        _card(canvas, size, 0.12, 0.25, 0.52, 0.47, const Color(0xFFE8ECE5));
     final workWidth = strip.width * 0.82;
-    canvas.drawRect(
-        Rect.fromLTWH(strip.left + 8, strip.top + 29, workWidth, 10),
+    canvas.drawRect(Rect.fromLTWH(strip.left + 8, strip.top + 28, workWidth, 9),
         Paint()..color = accent.withValues(alpha: 0.28));
     canvas.drawRect(
-        Rect.fromLTWH(strip.left + 8, strip.top + 29, workWidth * progress, 10),
+        Rect.fromLTWH(strip.left + 8, strip.top + 28, workWidth * progress, 9),
         Paint()..color = accent);
     canvas.drawRect(
         Rect.fromLTWH(
-            strip.left + 8 + workWidth, strip.top + 29, strip.width * 0.15, 10),
+            strip.left + 8 + workWidth, strip.top + 28, strip.width * 0.15, 9),
         Paint()..color = const Color(0xFFD8C6A4));
     _text(canvas, 'FOCUS  ${timeline.plannedDuration.inMinutes} MIN',
-        Offset(strip.left + 10, strip.top + 60), const Color(0xFF52675B), 8);
+        Offset(strip.left + 10, strip.top + 52), const Color(0xFF52675B), 8);
     _text(
         canvas,
         'RECOVER  ${preset.restDuration.inMinutes} MIN',
-        Offset(strip.left + strip.width * 0.63, strip.top + 60),
+        Offset(strip.left + strip.width * 0.63, strip.top + 52),
         const Color(0xFF8A7659),
         8);
   }
 
   void _paintMeeting(Canvas canvas, Size size, double progress, Color accent) {
     final agenda =
-        _card(canvas, size, 0.12, 0.24, 0.24, 0.42, const Color(0xFFFFFCF5));
+        _card(canvas, size, 0.12, 0.20, 0.24, 0.58, const Color(0xFFFFFCF5));
     _text(
         canvas, 'AGENDA', Offset(agenda.left + 12, agenda.top + 17), accent, 8);
-    _lines(canvas, agenda, 0.15, 0.37, 0.68, 5, 17, const Color(0xFFBEB4A3));
+    _lines(canvas, agenda, 0.15, 0.34, 0.68, 5, 12, const Color(0xFFBEB4A3));
     final decision =
-        _card(canvas, size, 0.43, 0.32, 0.23, 0.25, const Color(0xFFE8ECE5));
+        _card(canvas, size, 0.43, 0.28, 0.23, 0.36, const Color(0xFFE8ECE5));
     _text(canvas, 'DECISION', Offset(decision.left + 12, decision.top + 17),
         const Color(0xFF62756A), 8);
-    _lines(canvas, decision, 0.12, 0.47, 0.68, 3, 13, const Color(0xFFABB5A9));
+    _lines(canvas, decision, 0.12, 0.42, 0.68, 3, 10, const Color(0xFFABB5A9));
     _progressCaret(canvas, decision, progress, accent);
   }
 
@@ -736,11 +699,11 @@ class _FocusEnvironmentPainter extends CustomPainter {
   void _paintDocumentation(
       Canvas canvas, Size size, double progress, Color accent) {
     final page =
-        _card(canvas, size, 0.13, 0.22, 0.47, 0.47, const Color(0xFFFFFCF6));
-    _text(canvas, 'SYSTEM GUIDE', Offset(page.left + 15, page.top + 17),
+        _card(canvas, size, 0.13, 0.18, 0.47, 0.62, const Color(0xFFFFFCF6));
+    _text(canvas, 'SYSTEM GUIDE', Offset(page.left + 15, page.top + 14),
         const Color(0xFF766B5E), 8);
     for (var section = 0; section < 3; section++) {
-      final y = page.top + 42 + section * 40;
+      final y = page.top + 31 + section * 22;
       _text(
           canvas,
           ['Context', 'Procedure', 'Reference'][section],
@@ -757,20 +720,20 @@ class _FocusEnvironmentPainter extends CustomPainter {
   void _paintProjectBoard(
       Canvas canvas, Size size, double progress, Color accent) {
     for (var lane = 0; lane < 3; lane++) {
-      final rect = _card(canvas, size, 0.11 + lane * 0.19, 0.23, 0.16, 0.46,
+      final rect = _card(canvas, size, 0.11 + lane * 0.19, 0.20, 0.16, 0.58,
           const Color(0xFFE8ECE5));
       _text(canvas, ['READY', 'ACTIVE', 'DONE'][lane],
           Offset(rect.left + 8, rect.top + 12), const Color(0xFF637268), 7);
       for (var card = 0; card < 2; card++) {
-        final y = rect.top + 29 + card * 48;
+        final y = rect.top + 25 + card * 34;
         canvas.drawRRect(
             RRect.fromRectAndRadius(
-                Rect.fromLTWH(rect.left + 6, y, rect.width - 12, 38),
+                Rect.fromLTWH(rect.left + 6, y, rect.width - 12, 27),
                 const Radius.circular(3)),
             Paint()..color = const Color(0xFFFFFCF5));
         canvas.drawLine(
-            Offset(rect.left + 12, y + 15),
-            Offset(rect.right - 10, y + 15),
+            Offset(rect.left + 12, y + 12),
+            Offset(rect.right - 10, y + 12),
             Paint()..color = const Color(0xFFBEB9AC));
       }
     }
@@ -780,17 +743,17 @@ class _FocusEnvironmentPainter extends CustomPainter {
 
   void _paintJournal(Canvas canvas, Size size, double progress, Color accent) {
     final page =
-        _card(canvas, size, 0.15, 0.22, 0.42, 0.48, const Color(0xFFFFFCF3));
+        _card(canvas, size, 0.15, 0.18, 0.42, 0.62, const Color(0xFFFFFCF3));
     canvas.drawLine(
         Offset(page.left + 23, page.top + 10),
         Offset(page.left + 23, page.bottom - 10),
         Paint()..color = const Color(0xFFE4B9AA));
-    _text(canvas, 'Dear journal,', Offset(page.left + 35, page.top + 23),
+    _text(canvas, 'Dear journal,', Offset(page.left + 35, page.top + 19),
         const Color(0xFF877966), 9);
-    _lines(canvas, page, 0.23, 0.38, 0.69, 5, 17, const Color(0xFFB9AF9F));
+    _lines(canvas, page, 0.23, 0.34, 0.69, 5, 12, const Color(0xFFB9AF9F));
     canvas.drawLine(
-        Offset(page.left + 35, page.bottom - 18),
-        Offset(page.left + 35 + page.width * progress * 0.56, page.bottom - 18),
+        Offset(page.left + 35, page.bottom - 10),
+        Offset(page.left + 35 + page.width * progress * 0.56, page.bottom - 10),
         Paint()
           ..color = accent
           ..strokeWidth = 1.4);
@@ -798,17 +761,17 @@ class _FocusEnvironmentPainter extends CustomPainter {
 
   void _paintLanguage(Canvas canvas, Size size, double progress, Color accent) {
     final source =
-        _card(canvas, size, 0.13, 0.28, 0.23, 0.30, const Color(0xFFE7ECE5));
+        _card(canvas, size, 0.13, 0.24, 0.23, 0.40, const Color(0xFFE7ECE5));
     final phrase =
-        _card(canvas, size, 0.41, 0.28, 0.23, 0.30, const Color(0xFFFFFCF5));
-    _text(canvas, 'BUENOS DÍAS', Offset(source.left + 10, source.top + 24),
+        _card(canvas, size, 0.41, 0.24, 0.23, 0.40, const Color(0xFFFFFCF5));
+    _text(canvas, 'BUENOS DÍAS', Offset(source.left + 10, source.top + 16),
         const Color(0xFF617467), 9);
-    _text(canvas, 'GOOD MORNING', Offset(phrase.left + 9, phrase.top + 24),
+    _text(canvas, 'GOOD MORNING', Offset(phrase.left + 9, phrase.top + 16),
         accent, 8);
     _text(
         canvas,
         progress > 0.5 ? 'retrieve' : 'listen',
-        Offset(source.left + 10, source.bottom - 20),
+        Offset(source.left + 10, source.bottom - 14),
         const Color(0xFF8A8175),
         8);
     _connector(canvas, source.centerRight,
@@ -817,10 +780,10 @@ class _FocusEnvironmentPainter extends CustomPainter {
 
   void _paintMeditation(
       Canvas canvas, Size size, double progress, Color accent) {
-    final horizon = size.height * 0.56;
+    final horizon = size.height * 0.48;
     canvas.drawRect(
         Rect.fromLTWH(
-            size.width * 0.10, horizon, size.width * 0.58, size.height * 0.14),
+            size.width * 0.10, horizon, size.width * 0.58, size.height * 0.13),
         Paint()..color = const Color(0xFFDDE5DF));
     canvas.drawLine(
         Offset(size.width * 0.10, horizon),
@@ -828,17 +791,17 @@ class _FocusEnvironmentPainter extends CustomPainter {
         Paint()
           ..color = const Color(0xFF9CAFA5)
           ..strokeWidth = 1);
-    canvas.drawCircle(Offset(size.width * 0.39, size.height * 0.43),
+    canvas.drawCircle(Offset(size.width * 0.39, size.height * 0.37),
         size.width * 0.022, Paint()..color = accent.withValues(alpha: 0.55));
     _text(
         canvas,
         'NOTICE  ·  BREATHE  ·  RETURN',
-        Offset(size.width * 0.17, size.height * 0.67),
+        Offset(size.width * 0.17, size.height * 0.64),
         const Color(0xFF74867C),
         8);
     final seat = RRect.fromRectAndRadius(
         Rect.fromLTWH(
-            size.width * 0.34, size.height * 0.69, size.width * 0.14, 8),
+            size.width * 0.34, size.height * 0.72, size.width * 0.14, 6),
         const Radius.circular(5));
     canvas.drawRRect(seat, Paint()..color = const Color(0xFF9D8D76));
   }
@@ -868,8 +831,9 @@ class _FocusEnvironmentPainter extends CustomPainter {
       Canvas canvas, Size size, double progress, Color accent) {
     final plot =
         _card(canvas, size, 0.11, 0.22, 0.39, 0.45, const Color(0xFFFFFCF6));
+    final gridStep = (plot.height - 36) / 3;
     for (var i = 0; i < 4; i++) {
-      final y = plot.top + 35 + i * 25;
+      final y = plot.top + 18 + i * gridStep;
       canvas.drawLine(Offset(plot.left + 20, y), Offset(plot.right - 8, y),
           Paint()..color = const Color(0xFFE1DDD3));
     }
@@ -898,7 +862,7 @@ class _FocusEnvironmentPainter extends CustomPainter {
         _card(canvas, size, 0.54, 0.31, 0.16, 0.28, const Color(0xFFE8ECE5));
     _text(canvas, 'OBSERVE', Offset(note.left + 10, note.top + 17),
         const Color(0xFF637268), 8);
-    _lines(canvas, note, 0.14, 0.44, 0.6, 3, 13, const Color(0xFFAFB6A8));
+    _lines(canvas, note, 0.14, 0.40, 0.6, 2, 10, const Color(0xFFAFB6A8));
   }
 
   void _paintProblemSolving(
@@ -920,23 +884,24 @@ class _FocusEnvironmentPainter extends CustomPainter {
   void _paintFinancialAnalysis(
       Canvas canvas, Size size, double progress, Color accent) {
     final table =
-        _card(canvas, size, 0.12, 0.23, 0.44, 0.44, const Color(0xFFFFFCF5));
+        _card(canvas, size, 0.12, 0.20, 0.48, 0.58, const Color(0xFFFFFCF5));
     _text(
-        canvas, 'SCENARIO', Offset(table.left + 11, table.top + 15), accent, 8);
+        canvas, 'SCENARIO', Offset(table.left + 11, table.top + 14), accent, 8);
+    final rowStep = (table.height - 44) / 4;
     for (var row = 0; row < 4; row++) {
-      final y = table.top + 44 + row * 22;
+      final y = table.top + 31 + row * rowStep;
       canvas.drawLine(Offset(table.left + 10, y), Offset(table.right - 10, y),
           Paint()..color = const Color(0xFFE0D9CD));
       for (var col = 0; col < 3; col++) {
         final barWidth = table.width * (0.14 + (((row + col) % 3) * 0.06));
         canvas.drawRect(
             Rect.fromLTWH(
-                table.left + 14 + col * table.width * 0.29, y - 8, barWidth, 5),
+                table.left + 14 + col * table.width * 0.29, y - 5, barWidth, 4),
             Paint()..color = col == 1 ? accent : const Color(0xFFB8B5A8));
       }
     }
     _text(canvas, 'COMPARE ASSUMPTIONS',
-        Offset(table.left + 11, table.bottom - 13), const Color(0xFF7B756C), 7);
+        Offset(table.left + 11, table.bottom - 11), const Color(0xFF7B756C), 7);
   }
 
   void _paintTechnicalResearch(

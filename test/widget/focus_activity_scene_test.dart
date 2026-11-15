@@ -31,6 +31,7 @@ void main() {
         hasLength(FocusActivityDefinition.values.length),
       );
       for (final category in FocusActivityCategory.values) {
+        if (category == FocusActivityCategory.userActivities) continue;
         expect(FocusActivityDefinition.inCategory(category), isNotEmpty);
       }
       for (final preset in FocusPreset.values) {

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:todow/core/providers/service_providers.dart';
 import 'package:todow/domain/models/timetable_entry.dart';
 import 'package:todow/domain/models/enums.dart';
@@ -45,7 +46,7 @@ class TimetableNotifier extends AsyncNotifier<List<TimetableEntry>> {
       colorValue: colorValue,
     );
     await ref.read(timetableRepositoryProvider).create(entry);
-    
+
     if (state.hasValue) {
       state = AsyncData([...state.requireValue, entry]);
     } else {
@@ -76,14 +77,16 @@ class TimetableNotifier extends AsyncNotifier<List<TimetableEntry>> {
     }
   }
 
-  Future<void> importEntries(List<TimetableDraftEntry> draft, TimetableKind scheduleKind) async {
+  Future<void> importEntries(
+      List<TimetableDraftEntry> draft, TimetableKind scheduleKind) async {
     if (draft.isEmpty) {
       throw Exception('Add at least one class to import.');
     }
     for (final row in draft) {
       if (row.validationError != null) throw Exception(row.validationError!);
     }
-    final entries = draft.map((row) => row.toEntry(scheduleKind, _uuid.v4())).toList();
+    final entries =
+        draft.map((row) => row.toEntry(scheduleKind, _uuid.v4())).toList();
     await ref.read(timetableRepositoryProvider).createMany(entries);
     if (state.hasValue) {
       state = AsyncData([...state.requireValue, ...entries]);
@@ -102,20 +105,33 @@ class TimetableNotifier extends AsyncNotifier<List<TimetableEntry>> {
   }
 }
 
-final timetableProvider = AsyncNotifierProvider<TimetableNotifier, List<TimetableEntry>>(TimetableNotifier.new);
+final timetableProvider =
+    AsyncNotifierProvider<TimetableNotifier, List<TimetableEntry>>(
+        TimetableNotifier.new);
 
-final timetableEntriesForKindProvider = Provider.family<List<TimetableEntry>, TimetableKind>((ref, kind) {
+final personalTimetableProfileNameProvider =
+    FutureProvider<String>((ref) async {
+  final preferences = await SharedPreferences.getInstance();
+  return preferences.getString('timetable_personal_profile_name') ?? 'Personal';
+});
+
+final timetableEntriesForKindProvider =
+    Provider.family<List<TimetableEntry>, TimetableKind>((ref, kind) {
   final entries = ref.watch(timetableProvider).valueOrNull ?? [];
   return entries.where((e) => e.scheduleKind == kind).toList();
 });
 
 typedef TimetableFilter = ({Weekday day, TimetableKind kind});
 
-final timetableForDayProvider = Provider.family<List<TimetableEntry>, TimetableFilter>((ref, filter) {
+final timetableForDayProvider =
+    Provider.family<List<TimetableEntry>, TimetableFilter>((ref, filter) {
   final asyncEntries = ref.watch(timetableProvider);
   return asyncEntries.maybeWhen(
     data: (entries) {
-      final filtered = entries.where((e) => e.weekday == filter.day && e.scheduleKind == filter.kind).toList();
+      final filtered = entries
+          .where(
+              (e) => e.weekday == filter.day && e.scheduleKind == filter.kind)
+          .toList();
       filtered.sort((a, b) => a.startTime.compareTo(b.startTime));
       return filtered;
     },
