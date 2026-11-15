@@ -6,7 +6,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:todow/domain/models/task.dart';
 import 'package:todow/domain/models/attachment.dart';
 import 'package:todow/domain/attachment_limits.dart';
-import 'package:todow/presentation/providers/task_providers.dart';
+import 'package:todow/presentation/features/tasks/task_providers.dart';
 import 'package:todow/core/theme/app_colors.dart';
 import 'attachment_row.dart';
 

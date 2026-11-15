@@ -8,14 +8,14 @@ import 'package:todow/domain/models/roadmap.dart';
 import 'package:todow/domain/models/subtask.dart';
 import 'package:todow/domain/models/task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:todow/presentation/providers/timetable_providers.dart';
-import 'package:todow/presentation/providers/task_providers.dart';
-import 'package:todow/presentation/providers/roadmap_providers.dart';
-import 'package:todow/presentation/widgets/attachments_section.dart';
-import 'package:todow/presentation/widgets/reminders_section.dart';
-import 'package:todow/presentation/widgets/subtasks_section.dart';
+import 'package:todow/presentation/features/timetable/timetable_providers.dart';
+import 'package:todow/presentation/features/tasks/task_providers.dart';
+import 'package:todow/presentation/features/roadmaps/roadmap_providers.dart';
+import 'package:todow/presentation/features/tasks/attachments_section.dart';
+import 'package:todow/presentation/features/tasks/reminders_section.dart';
+import 'package:todow/presentation/features/tasks/subtasks_section.dart';
 import 'package:provider/provider.dart' as provider_pkg;
-import 'package:todow/presentation/controllers/task_controller.dart';
+import 'package:todow/presentation/features/tasks/task_controller.dart';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -1162,13 +1162,14 @@ class _CurvedHeader extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  Icon(
-                    isRoadmapTask ? Icons.lock_outline_rounded : Icons.circle,
-                    color:
-                        isRoadmapTask ? AppColors.action : AppColors.attention,
-                    size: isRoadmapTask ? 16 : 8,
-                  ),
-                  const SizedBox(width: 8),
+                  if (isRoadmapTask) ...[
+                    const Icon(
+                      Icons.lock_outline_rounded,
+                      color: AppColors.action,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   Text(
                     contextLabel,
                     style: const TextStyle(
@@ -1465,91 +1466,115 @@ class _SchedulingPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.divider.withValues(alpha: 0.6)),
-        boxShadow: const [
+        borderRadius: BorderRadius.all(Radius.circular(20)),
+        boxShadow: [
           BoxShadow(
-              color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 4))
+            color: Color(0x0F000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Quick date row
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _QuickDateChip(
-                      label: 'Today',
-                      selected: isQuickDate(0),
-                      onTap: () => onQuickDate(0),
-                    ),
-                    _QuickDateChip(
-                      label: 'Tomorrow',
-                      selected: isQuickDate(1),
-                      onTap: () => onQuickDate(1),
-                    ),
-                    _QuickDateChip(
-                      label: 'Pick date & time',
-                      icon: Icons.calendar_month_rounded,
-                      selected:
-                          dueAt != null && !isQuickDate(0) && !isQuickDate(1),
-                      onTap: onPickDate,
-                    ),
+                child: SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 0, label: Text('Today')),
+                    ButtonSegment(value: 1, label: Text('Tomorrow')),
                   ],
-                ),
-              ),
-              if (dueAt != null) ...[
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: onClear,
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                        top: 8), // align with first row of chips
-                    child: Icon(Icons.close_rounded,
-                        size: 18,
-                        color: AppColors.textSecondary.withValues(alpha: 0.5)),
+                  selected: {
+                    if (isQuickDate(0)) 0,
+                    if (isQuickDate(1)) 1,
+                  },
+                  emptySelectionAllowed: true,
+                  showSelectedIcon: false,
+                  onSelectionChanged: (selection) {
+                    if (selection.isNotEmpty) onQuickDate(selection.first);
+                  },
+                  style: SegmentedButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    selectedForegroundColor: AppColors.textPrimary,
+                    selectedBackgroundColor:
+                        AppColors.action.withValues(alpha: 0.1),
+                    side: const BorderSide(color: AppColors.divider),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 10,
+                    ),
                   ),
                 ),
-              ],
+              ),
+              if (dueAt != null)
+                IconButton(
+                  tooltip: 'Clear due date',
+                  onPressed: onClear,
+                  icon: const Icon(Icons.close_rounded),
+                  color: AppColors.textSecondary,
+                ),
             ],
           ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: onPickDate,
+            icon: const Icon(Icons.calendar_month_rounded, size: 18),
+            label: const Text('Choose date and time'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.textPrimary,
+              side: const BorderSide(color: AppColors.divider),
+              minimumSize: const Size(0, 48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
           if (dueAt != null) ...[
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: onPickDate,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.action.withValues(alpha: 0.07),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                      color: AppColors.action.withValues(alpha: 0.2)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.schedule_rounded,
-                        size: 15, color: AppColors.action),
-                    const SizedBox(width: 8),
-                    Text(
-                      fmtDate(dueAt!),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: Divider(height: 1, color: AppColors.divider),
+            ),
+            Semantics(
+              button: true,
+              label: 'Due ${fmtDate(dueAt!)}. Change due date and time.',
+              child: InkWell(
+                onTap: onPickDate,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.schedule_rounded,
+                        size: 18,
                         color: AppColors.action,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          fmtDate(dueAt!),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        'Change',
+                        style: TextStyle(
+                          color: AppColors.action,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1559,55 +1584,6 @@ class _SchedulingPanel extends StatelessWidget {
     );
   }
 }
-
-class _QuickDateChip extends StatelessWidget {
-  const _QuickDateChip(
-      {required this.label,
-      required this.selected,
-      required this.onTap,
-      this.icon});
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.action : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-                color: selected ? AppColors.action : AppColors.divider),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(icon,
-                    size: 13,
-                    color:
-                        selected ? AppColors.surface : AppColors.textSecondary),
-                const SizedBox(width: 4),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? AppColors.surface : AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-}
-
-// ── Priority panel ────────────────────────────────────────────────────────────
 
 class _PriorityPanel extends StatelessWidget {
   const _PriorityPanel({required this.priority, required this.onChanged});

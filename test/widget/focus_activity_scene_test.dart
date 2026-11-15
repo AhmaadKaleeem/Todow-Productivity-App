@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:todow/domain/models/enums.dart';
 import 'package:todow/domain/models/focus_activity.dart';
 import 'package:todow/domain/models/focus_timeline.dart';
-import 'package:todow/presentation/widgets/focus_activity_scene.dart';
+import 'package:todow/presentation/features/focus/focus_activity_scene.dart';
 
 FocusTimeline _timeline(FocusAnimationPhase phase, double progress) =>
     FocusTimeline(
@@ -21,12 +21,6 @@ void main() {
       expect(
         FocusActivityDefinition.values
             .map((value) => value.environment)
-            .toSet(),
-        hasLength(FocusActivityDefinition.values.length),
-      );
-      expect(
-        FocusActivityDefinition.values
-            .map((value) => value.workSurface)
             .toSet(),
         hasLength(FocusActivityDefinition.values.length),
       );
@@ -60,7 +54,7 @@ void main() {
       }
     });
 
-    testWidgets('labels each duration-scaled phase', (tester) async {
+    testWidgets('keeps phase labels out of the focus scene', (tester) async {
       const phases = {
         FocusAnimationPhase.entry: (0.02, 'ENTERING'),
         FocusAnimationPhase.settling: (0.10, 'SETTLING'),
@@ -84,7 +78,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.text(entry.value.$2), findsOneWidget);
+        expect(find.text(entry.value.$2), findsNothing);
       }
     });
 

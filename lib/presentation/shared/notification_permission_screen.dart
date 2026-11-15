@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:todow/core/theme/app_colors.dart';
-import 'package:todow/presentation/widgets/corner_arc_decor.dart';
+import 'package:todow/presentation/shared/corner_arc_decor.dart';
 
 class NotificationPermissionScreen extends StatefulWidget {
   const NotificationPermissionScreen({required this.onEnable, super.key});
@@ -83,7 +83,7 @@ class _NotificationPermissionScreenState
 
                   // Display title
                   const Text(
-                    'Remember the work.\nNot the worry.',
+                    'Get reminders on your terms.',
                     style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 28,
@@ -94,7 +94,7 @@ class _NotificationPermissionScreenState
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'A reminder at the right moment keeps a planned task from becoming a last-minute scramble. Todow only alerts you about times you choose.',
+                    'Choose when task reminders arrive. Todow will notify you at the times you set.',
                     style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 14,
@@ -123,30 +123,24 @@ class _NotificationPermissionScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildRow(
-                          accentColor: AppColors.action,
-                          title: 'A nudge before it matters',
-                          detail:
-                              'Choose a time before a deadline so you can start calmly, not react under pressure.',
+                          title: 'Choose a reminder time',
+                          detail: 'Set reminders before a deadline or when a task is due.',
                         ),
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 12),
                           child: Divider(color: AppColors.divider, height: 1),
                         ),
                         _buildRow(
-                          accentColor: AppColors.alert,
-                          title: 'Alarm mode when you need it',
-                          detail:
-                              'For important tasks, Todow can ring like an alarm until you stop or snooze it.',
+                          title: 'Use an alarm for important tasks',
+                          detail: 'Alarms keep ringing until you dismiss or snooze them.',
                         ),
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 12),
                           child: Divider(color: AppColors.divider, height: 1),
                         ),
                         _buildRow(
-                          accentColor: AppColors.attention,
-                          title: 'Quiet by default',
-                          detail:
-                              'No promotions and no surprise messages. Your schedule stays in your hands.',
+                          title: 'Manage reminders per task',
+                          detail: 'Change or turn off reminders whenever you need to.',
                         ),
                       ],
                     ),
@@ -176,7 +170,7 @@ class _NotificationPermissionScreenState
                               ),
                             )
                           : const Text(
-                              'Allow task reminders',
+                              'Allow notifications',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -188,7 +182,7 @@ class _NotificationPermissionScreenState
                   const SizedBox(height: 10),
                   const Center(
                     child: Text(
-                      'You can change this anytime in Android Settings.',
+                      'You can change this later in Android Settings.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColors.textSecondary,
@@ -206,24 +200,12 @@ class _NotificationPermissionScreenState
   }
 
   Widget _buildRow({
-    required Color accentColor,
     required String title,
     required String detail,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Minimal accent dot
-        Container(
-          width: 6,
-          height: 6,
-          margin: const EdgeInsets.only(top: 6),
-          decoration: BoxDecoration(
-            color: accentColor,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

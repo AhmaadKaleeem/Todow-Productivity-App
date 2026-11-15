@@ -11,7 +11,6 @@ class FocusActivityScene extends StatelessWidget {
     required this.timeline,
     required this.isRunning,
     this.compact = false,
-    this.showPhaseLabel = true,
     this.activityLabel,
     this.mixedEnvironment = false,
     this.accent,
@@ -21,7 +20,6 @@ class FocusActivityScene extends StatelessWidget {
   final FocusTimeline timeline;
   final bool isRunning;
   final bool compact;
-  final bool showPhaseLabel;
   final String? activityLabel;
   final bool mixedEnvironment;
   final Color? accent;
@@ -88,20 +86,6 @@ class FocusActivityScene extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  if (showPhaseLabel)
-                    Positioned(
-                      right: 14,
-                      top: 14,
-                      child: Text(
-                        _phaseLabel(timeline.phase),
-                        style: TextStyle(
-                          color: _phaseColor(timeline.phase),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
                   if (compact)
                     Positioned(
                       left: 0,
@@ -1111,23 +1095,4 @@ Color _activityAccent(FocusPreset preset) => switch (preset) {
       FocusPreset.dataAnalysis ||
       FocusPreset.financialAnalysis =>
         const Color(0xFF4D8A83),
-    };
-
-Color _phaseColor(FocusAnimationPhase phase) => switch (phase) {
-      FocusAnimationPhase.entry ||
-      FocusAnimationPhase.settling =>
-        AppColors.textSecondary,
-      FocusAnimationPhase.deepFocus => const Color(0xFF0D9488),
-      FocusAnimationPhase.progression => AppColors.action,
-      FocusAnimationPhase.finalPhase => AppColors.attention,
-      FocusAnimationPhase.completion => const Color(0xFF66836F),
-    };
-
-String _phaseLabel(FocusAnimationPhase phase) => switch (phase) {
-      FocusAnimationPhase.entry => 'ENTERING',
-      FocusAnimationPhase.settling => 'SETTLING',
-      FocusAnimationPhase.deepFocus => 'DEEP FOCUS',
-      FocusAnimationPhase.progression => 'IN RHYTHM',
-      FocusAnimationPhase.finalPhase => 'CLOSING',
-      FocusAnimationPhase.completion => 'COMPLETE',
     };

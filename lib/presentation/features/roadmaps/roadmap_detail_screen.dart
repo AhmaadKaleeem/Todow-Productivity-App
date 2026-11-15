@@ -9,11 +9,11 @@ import 'package:todow/core/theme/app_colors.dart';
 import 'package:todow/domain/models/roadmap.dart';
 import 'package:todow/domain/models/task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:todow/presentation/providers/roadmap_providers.dart';
-import 'package:todow/presentation/screens/roadmap_import_screen.dart';
-import 'package:todow/presentation/widgets/roadmap_spine_painter.dart';
-import 'package:todow/presentation/widgets/topic_card.dart';
-import 'package:todow/presentation/widgets/task_time_view.dart';
+import 'package:todow/presentation/features/roadmaps/roadmap_providers.dart';
+import 'package:todow/presentation/features/roadmaps/roadmap_import_screen.dart';
+import 'package:todow/presentation/features/roadmaps/roadmap_spine_painter.dart';
+import 'package:todow/presentation/features/roadmaps/topic_card.dart';
+import 'package:todow/presentation/features/tasks/task_time_view.dart';
 
 // Inline palette resolver — kept in sync with roadmap_list_screen palette.
 const _kDetailPalette = [
@@ -1044,13 +1044,13 @@ class _EmptyRoadmap extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(40, 28, 40, 40),
       child: Column(
         children: [
-          const Text('No Topics yet',
+          const Text('No topics yet',
               style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 8),
-          const Text('Break this Roadmap into a few major stages.',
+          const Text('Add the main stages of this plan, then add tasks to each one.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textSecondary)),
           const SizedBox(height: 16),

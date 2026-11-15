@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:todow/core/theme/app_colors.dart';
 import 'package:todow/domain/models/attachment.dart';
-import 'package:todow/presentation/widgets/attachment_row.dart';
+import 'package:todow/presentation/features/tasks/attachment_row.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/core/providers/service_providers.dart';

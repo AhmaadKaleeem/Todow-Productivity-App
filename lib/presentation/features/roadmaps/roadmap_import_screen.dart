@@ -10,10 +10,10 @@ import 'package:path_provider/path_provider.dart';
 
 import 'package:todow/core/theme/app_colors.dart';
 import 'package:todow/domain/models/roadmap_import.dart';
-import 'package:todow/presentation/providers/roadmap_providers.dart';
+import 'package:todow/presentation/features/roadmaps/roadmap_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:todow/presentation/providers/task_providers.dart';
-import 'package:todow/presentation/screens/roadmap_detail_screen.dart';
+import 'package:todow/presentation/features/tasks/task_providers.dart';
+import 'package:todow/presentation/features/roadmaps/roadmap_detail_screen.dart';
 
 const _csvHeaders = [
   'roadmap_title',

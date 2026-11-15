@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:todow/domain/models/enums.dart';
-import 'package:todow/presentation/controllers/task_controller.dart';
+import 'package:todow/presentation/features/tasks/task_controller.dart';
 import '../../widget/task_controller_test.dart';
 
 void main() {

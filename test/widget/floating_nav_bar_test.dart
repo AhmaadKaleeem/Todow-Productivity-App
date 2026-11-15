@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:todow/core/theme/app_colors.dart';
-import 'package:todow/presentation/screens/app_shell.dart';
+import 'package:todow/presentation/app_shell.dart';
 
 void main() {
   group('FloatingNavBar', () {

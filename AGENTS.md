@@ -98,7 +98,7 @@ situation applies.
 
 ## Project constraints
 
-- Flutter UI screens live in `lib/presentation/screens/`; reusable widgets live in `lib/presentation/widgets/`. Read only the files needed for the change.
+- Feature UI, state, and feature-specific widgets live together under `lib/presentation/features/<feature>/`. App-wide UI lives in `lib/presentation/shared/`; keep domain rules and persistence in `lib/domain/` and `lib/data/`. Read only the files needed for the change.
 - Keep the app local-first. Do not add server or backend code unless explicitly requested; local SQLite persistence is allowed.
 - Use Ponytail to favor the smallest complete change and Impeccable for UI work. Follow `docs/DESIGN_SPEC.md` and the current app's visual language.
 - Keep comments for non-obvious decisions; avoid boilerplate comments.

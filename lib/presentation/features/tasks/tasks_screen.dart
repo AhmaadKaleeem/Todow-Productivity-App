@@ -4,10 +4,10 @@ import 'package:todow/core/utils/date_format.dart';
 import 'package:todow/domain/models/task.dart';
 import 'package:todow/domain/models/query.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:todow/presentation/providers/task_providers.dart';
+import 'package:todow/presentation/features/tasks/task_providers.dart';
 
 import 'package:todow/presentation/app.dart';
-import 'package:todow/presentation/widgets/beautiful_back_button.dart';
+import 'package:todow/presentation/shared/beautiful_back_button.dart';
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -67,7 +67,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
             data: (tasks) => tasks.isEmpty
                 ? const AppEmptyState(
                     title: 'No tasks yet',
-                    message: 'Capture the next thing you need to remember.')
+                    message: 'Add something you want to get done. You can add details later.')
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
                     itemCount: tasks.length,
@@ -78,11 +78,6 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
           ),
         ),
       ]),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TaskEditorScreen())),
-        icon: const Icon(Icons.add),
-        label: const Text('Add task'),
-      ),
     );
   }
 }

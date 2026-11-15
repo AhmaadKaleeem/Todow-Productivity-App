@@ -25,8 +25,8 @@ import 'package:todow/domain/services/notification_service.dart';
 import 'package:todow/domain/services/reminder_scheduler.dart';
 import 'package:todow/domain/repositories/roadmap_repository.dart';
 
-import 'package:todow/presentation/controllers/focus_controller.dart';
-import 'package:todow/presentation/controllers/task_controller.dart';
+import 'package:todow/presentation/features/focus/focus_controller.dart';
+import 'package:todow/presentation/features/tasks/task_controller.dart';
 
 import 'package:todow/data/local/roadmap_repository_impl.dart';
 

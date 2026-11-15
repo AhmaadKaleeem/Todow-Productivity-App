@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/core/theme/app_colors.dart';
 import 'package:todow/domain/models/roadmap.dart';
 import 'package:todow/domain/models/task.dart';
-import 'package:todow/presentation/providers/roadmap_providers.dart';
-import 'package:todow/presentation/screens/task_editor_screen.dart';
+import 'package:todow/presentation/features/roadmaps/roadmap_providers.dart';
+import 'package:todow/presentation/features/tasks/task_editor_screen.dart';
 
 enum TimeFilter { today, thisWeek, upcoming, all, custom }
 

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:todow/bootstrap.dart';
 import 'package:todow/core/theme/app_colors.dart';
-import 'package:todow/presentation/app.dart';
-import 'package:todow/presentation/screens/home_screen.dart';
-import 'package:todow/presentation/screens/roadmap_list_screen.dart';
-import 'package:todow/presentation/screens/notification_permission_screen.dart';
+import 'package:todow/presentation/features/focus/focus_screen.dart';
+import 'package:todow/presentation/features/home/home_screen.dart';
+import 'package:todow/presentation/features/roadmaps/roadmap_list_screen.dart';
+import 'package:todow/presentation/features/tasks/tasks_screen.dart';
+import 'package:todow/presentation/features/tasks/task_editor_screen.dart';
+import 'package:todow/presentation/features/timetable/timetable_screen.dart';
+import 'package:todow/presentation/shared/notification_permission_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:todow/presentation/providers/app_providers.dart';
+import 'package:todow/presentation/app_providers.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({required this.services, super.key});
@@ -592,23 +595,27 @@ class FloatingNavBar extends StatelessWidget {
             onTap: () => onSelect(1),
           ),
           const SizedBox(width: 28),
-          GestureDetector(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const TaskEditorScreen(),
+          Semantics(
+            button: true,
+            label: 'Create task',
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const TaskEditorScreen(),
+                ),
               ),
-            ),
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: const BoxDecoration(
-                color: AppColors.action,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.add_rounded,
-                color: Colors.white,
-                size: 26,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: AppColors.action,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.add_rounded,
+                  color: Colors.white,
+                  size: 26,
+                ),
               ),
             ),
           ),

@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:todow/data/local/app_database.dart';
 import 'package:todow/data/local/attachment_repository_impl.dart';
-import 'package:todow/presentation/controllers/task_controller.dart';
+import 'package:todow/presentation/features/tasks/task_controller.dart';
 import 'package:todow/domain/repositories/task_repository.dart';
 import 'package:todow/domain/services/file_storage.dart';
 import 'package:todow/domain/services/reminder_scheduler.dart';

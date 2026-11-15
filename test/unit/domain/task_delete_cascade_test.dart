@@ -6,7 +6,7 @@ import 'package:todow/domain/repositories/attachment_repository.dart';
 import 'package:todow/domain/repositories/task_repository.dart';
 import 'package:todow/domain/services/file_storage.dart';
 import 'package:todow/domain/services/reminder_scheduler.dart';
-import 'package:todow/presentation/controllers/task_controller.dart';
+import 'package:todow/presentation/features/tasks/task_controller.dart';
 
 
 import 'package:todow/domain/models/reminder.dart';

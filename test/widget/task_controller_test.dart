@@ -3,7 +3,7 @@ import 'package:todow/domain/models/enums.dart';
 import 'package:todow/domain/models/task.dart';
 import 'package:todow/domain/models/subtask.dart';
 import 'package:todow/domain/models/attachment.dart';
-import 'package:todow/presentation/controllers/task_controller.dart';
+import 'package:todow/presentation/features/tasks/task_controller.dart';
 import 'package:todow/domain/repositories/task_repository.dart';
 import 'package:todow/domain/services/reminder_scheduler.dart';
 import 'package:todow/domain/repositories/attachment_repository.dart';

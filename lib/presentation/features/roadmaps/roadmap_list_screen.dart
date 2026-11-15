@@ -4,10 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:todow/core/theme/app_colors.dart';
 import 'package:todow/domain/models/roadmap.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:todow/presentation/providers/roadmap_providers.dart';
-import 'package:todow/presentation/screens/roadmap_detail_screen.dart';
-import 'package:todow/presentation/screens/roadmap_import_screen.dart';
-import 'package:todow/presentation/widgets/beautiful_back_button.dart';
+import 'package:todow/presentation/features/roadmaps/roadmap_providers.dart';
+import 'package:todow/presentation/features/roadmaps/roadmap_detail_screen.dart';
+import 'package:todow/presentation/features/roadmaps/roadmap_import_screen.dart';
+import 'package:todow/presentation/shared/beautiful_back_button.dart';
 
 // 12 curated key-pairs — solid accent + gradient skin, aligned to design spec.
 // Index -1 = no explicit choice; colour is derived from roadmap.id hash.
@@ -193,7 +193,7 @@ class RoadmapListScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Your long-term learning paths',
+                    'Plan a larger goal one step at a time.',
                     style:
                         TextStyle(fontSize: 14, color: AppColors.textSecondary),
                   ),
@@ -790,7 +790,7 @@ class _EmptyState extends StatelessWidget {
                     color: AppColors.textPrimary)),
             const SizedBox(height: 8),
             const Text(
-                'Create a roadmap to plan your learning journey in structured stages.',
+                'Break a larger goal into stages, then track tasks in each one.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     fontSize: 14, color: AppColors.textSecondary, height: 1.5)),
@@ -798,7 +798,7 @@ class _EmptyState extends StatelessWidget {
             FilledButton.icon(
               onPressed: onCreate,
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Create manually'),
+              label: const Text('Create roadmap'),
               style: FilledButton.styleFrom(
                   backgroundColor: AppColors.action,
                   foregroundColor: Colors.white,

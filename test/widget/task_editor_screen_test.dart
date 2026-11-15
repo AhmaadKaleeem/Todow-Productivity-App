@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:todow/core/providers/service_providers.dart';
 import 'package:todow/domain/models/enums.dart';
 import 'package:todow/domain/models/task.dart';
-import 'package:todow/presentation/screens/task_editor_screen.dart';
+import 'package:todow/presentation/features/tasks/task_editor_screen.dart';
 
 import 'task_controller_test.dart';
 

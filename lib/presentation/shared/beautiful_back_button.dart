@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:todow/core/theme/app_colors.dart';
-import 'package:todow/presentation/screens/app_shell.dart';
+import 'package:todow/presentation/app_shell.dart';
 
 class BeautifulBackButton extends StatelessWidget {
   const BeautifulBackButton({

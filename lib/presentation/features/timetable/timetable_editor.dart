@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:todow/domain/models/enums.dart';
 import 'package:todow/domain/models/timetable_entry.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:todow/presentation/providers/timetable_providers.dart';
-import 'package:todow/presentation/providers/task_providers.dart';
+import 'package:todow/presentation/features/timetable/timetable_providers.dart';
+import 'package:todow/presentation/features/tasks/task_providers.dart';
 import 'package:todow/core/theme/app_colors.dart';
 
 Future<void> showTimetableEditor(
@@ -39,6 +39,11 @@ const List<Color> _kTimetableColors = [
   Color(0xFFEF4444), // red
 ];
 
+int _colorValue(Color color) {
+  // ignore: deprecated_member_use
+  return color.value;
+}
+
 class _TimetableEditorSheet extends ConsumerStatefulWidget {
   final TimetableEntry? entry;
   final Weekday? initialWeekday;
@@ -53,7 +58,8 @@ class _TimetableEditorSheet extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_TimetableEditorSheet> createState() => _TimetableEditorSheetState();
+  ConsumerState<_TimetableEditorSheet> createState() =>
+      _TimetableEditorSheetState();
 }
 
 class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
@@ -85,11 +91,12 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
         : TimeOfDay.fromDateTime(widget.entry!.endTime);
     _scheduledDate =
         widget.entry?.scheduledDate ?? widget.initialDate ?? DateTime.now();
-    _repeatWeekly =
-        widget.entry?.repeatWeekly ?? widget.scheduleKind == TimetableKind.university;
+    _repeatWeekly = widget.entry?.repeatWeekly ??
+        widget.scheduleKind == TimetableKind.university;
     _taskId = widget.entry?.taskId;
     // ignore: deprecated_member_use
-    _selectedColor = widget.entry?.colorValue ?? _kTimetableColors[0].value;
+    _selectedColor =
+        widget.entry?.colorValue ?? _colorValue(_kTimetableColors[0]);
   }
 
   @override
@@ -115,8 +122,8 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
       return;
     }
     final now = DateTime.now();
-    final startTime = DateTime(
-        now.year, now.month, now.day, _start.hour, _start.minute);
+    final startTime =
+        DateTime(now.year, now.month, now.day, _start.hour, _start.minute);
     final endTime =
         DateTime(now.year, now.month, now.day, _end.hour, _end.minute);
     final controller = ref.read(timetableProvider.notifier);
@@ -128,9 +135,7 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
           instructor: _instructor.text.trim(),
           weekday: _weekday,
           scheduleKind: widget.scheduleKind,
-          scheduledDate: widget.scheduleKind == TimetableKind.personal && !_repeatWeekly
-              ? _scheduledDate
-              : null,
+          scheduledDate: !_repeatWeekly ? _scheduledDate : null,
           repeatWeekly: _repeatWeekly,
           taskId: _taskId,
           colorValue: _selectedColor,
@@ -149,9 +154,7 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
           endTime: endTime,
           room: _room.text.trim().isEmpty ? null : _room.text.trim(),
           colorValue: _selectedColor,
-          scheduledDate: widget.scheduleKind == TimetableKind.personal && !_repeatWeekly
-              ? _scheduledDate
-              : null,
+          scheduledDate: !_repeatWeekly ? _scheduledDate : null,
           repeatWeekly: _repeatWeekly,
           taskId: _taskId,
           category: widget.entry!.category,
@@ -159,15 +162,16 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
       }
       if (mounted) Navigator.pop(context);
     } catch (e, st) {
-      debugPrint('[ERR-TT-01] Failed to save class: $e\n$st');
+      debugPrint('[ERR-TT-01] Failed to save timetable entry: $e\n$st');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: const Text(
-            "We couldn't save this class. Please check your inputs and try again.",
+            "We couldn't save this entry. Please check your inputs and try again.",
             style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
           ),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           backgroundColor: AppColors.textPrimary,
           margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         ));
@@ -177,10 +181,8 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isUni = widget.scheduleKind == TimetableKind.university;
-    final titleText = widget.entry == null
-        ? (isUni ? 'Add Class' : 'Add Activity')
-        : (isUni ? 'Edit Class' : 'Edit Activity');
+    final titleText =
+        widget.entry == null ? 'Add schedule entry' : 'Edit schedule entry';
 
     final mq = MediaQuery.of(context);
     final viewInsets = mq.viewInsets.bottom;
@@ -215,7 +217,8 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
                           color: AppColors.surface,
                           borderRadius: BorderRadius.circular(16),
@@ -238,7 +241,8 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                   children: [
                     // Title Input
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 8),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(24),
@@ -246,13 +250,13 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                       child: TextField(
                         controller: _course,
                         style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                            letterSpacing: -0.5,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.5,
                         ),
                         decoration: InputDecoration(
-                          hintText: isUni ? 'Course name' : 'Activity name',
+                          hintText: 'Name this entry',
                           hintStyle: TextStyle(
                               color: AppColors.textSecondaryOpacity(0.4)),
                           border: InputBorder.none,
@@ -277,13 +281,13 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                       clipBehavior: Clip.none,
                       child: Row(
                         children: _kTimetableColors.map((color) {
-                          // ignore: deprecated_member_use
-                          final isSelected = _selectedColor == color.value;
+                          final isSelected =
+                              _selectedColor == _colorValue(color);
                           return Padding(
                             padding: const EdgeInsets.only(right: 12),
                             child: GestureDetector(
-                              // ignore: deprecated_member_use
-                              onTap: () => setState(() => _selectedColor = color.value),
+                              onTap: () => setState(
+                                  () => _selectedColor = _colorValue(color)),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
                                 width: 44,
@@ -292,10 +296,18 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                                   color: color,
                                   shape: BoxShape.circle,
                                   border: isSelected
-                                      ? Border.all(color: AppColors.textPrimary, width: 3)
+                                      ? Border.all(
+                                          color: AppColors.textPrimary,
+                                          width: 3)
                                       : null,
                                   boxShadow: isSelected
-                                      ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 4))]
+                                      ? [
+                                          BoxShadow(
+                                              color:
+                                                  color.withValues(alpha: 0.4),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 4))
+                                        ]
                                       : null,
                                 ),
                               ),
@@ -316,7 +328,7 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                     const SizedBox(height: 12),
 
                     // Day Selector
-                    if (isUni || _repeatWeekly) ...[
+                    ...[
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         clipBehavior: Clip.none,
@@ -333,17 +345,25 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                                   height: 44,
                                   alignment: Alignment.center,
                                   decoration: BoxDecoration(
-                                    color: isSelected ? AppColors.textPrimary : AppColors.surface,
+                                    color: isSelected
+                                        ? AppColors.textPrimary
+                                        : AppColors.surface,
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                        color: isSelected ? AppColors.textPrimary : AppColors.divider),
+                                        color: isSelected
+                                            ? AppColors.textPrimary
+                                            : AppColors.divider),
                                   ),
                                   child: Text(
                                     day.fullLabel.substring(0, 1),
                                     style: TextStyle(
                                         fontSize: 15,
-                                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                        color: isSelected ? Colors.white : AppColors.textSecondary),
+                                        fontWeight: isSelected
+                                            ? FontWeight.w800
+                                            : FontWeight.w600,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : AppColors.textSecondary),
                                   ),
                                 ),
                               ),
@@ -354,19 +374,24 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                       const SizedBox(height: 16),
                     ],
 
-                    if (!isUni) ...[
+                    ...[
                       GestureDetector(
-                        onTap: () => setState(() => _repeatWeekly = !_repeatWeekly),
+                        onTap: () =>
+                            setState(() => _repeatWeekly = !_repeatWeekly),
                         child: Row(
                           children: [
                             Container(
                               width: 24,
                               height: 24,
                               decoration: BoxDecoration(
-                                color: _repeatWeekly ? AppColors.action : AppColors.surface,
+                                color: _repeatWeekly
+                                    ? AppColors.action
+                                    : AppColors.surface,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                    color: _repeatWeekly ? AppColors.action : AppColors.divider),
+                                    color: _repeatWeekly
+                                        ? AppColors.action
+                                        : AppColors.divider),
                               ),
                               child: _repeatWeekly
                                   ? const Center(
@@ -393,18 +418,22 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                             final date = await showDatePicker(
                               context: context,
                               initialDate: _scheduledDate,
-                              firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                              lastDate: DateTime.now().add(const Duration(days: 3650)),
+                              firstDate: DateTime.now()
+                                  .subtract(const Duration(days: 365)),
+                              lastDate: DateTime.now()
+                                  .add(const Duration(days: 3650)),
                             );
                             if (date != null) {
                               setState(() {
                                 _scheduledDate = date;
-                                _weekday = WeekdayExt.fromDartWeekday(date.weekday);
+                                _weekday =
+                                    WeekdayExt.fromDartWeekday(date.weekday);
                               });
                             }
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
                             decoration: BoxDecoration(
                               color: AppColors.surface,
                               borderRadius: BorderRadius.circular(16),
@@ -413,12 +442,12 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                    'Date',
+                                Text('Date',
                                     style: TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w600,
-                                        color: AppColors.textSecondaryOpacity(0.8))),
+                                        color: AppColors.textSecondaryOpacity(
+                                            0.8))),
                                 Text(
                                   '${_scheduledDate.year}-${_scheduledDate.month.toString().padLeft(2, '0')}-${_scheduledDate.day.toString().padLeft(2, '0')}',
                                   style: const TextStyle(
@@ -445,7 +474,8 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                               if (value != null) setState(() => _start = value);
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(24),
@@ -458,7 +488,8 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                                       style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
-                                          color: AppColors.textSecondaryOpacity(0.7))),
+                                          color: AppColors.textSecondaryOpacity(
+                                              0.7))),
                                   const SizedBox(height: 4),
                                   Text(_start.format(context),
                                       style: const TextStyle(
@@ -479,7 +510,8 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                               if (value != null) setState(() => _end = value);
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(24),
@@ -492,7 +524,8 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                                       style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
-                                          color: AppColors.textSecondaryOpacity(0.7))),
+                                          color: AppColors.textSecondaryOpacity(
+                                              0.7))),
                                   const SizedBox(height: 4),
                                   Text(_end.format(context),
                                       style: const TextStyle(
@@ -519,7 +552,8 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
 
                     // Location Input
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(16),
@@ -532,7 +566,7 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary),
                         decoration: InputDecoration(
-                          hintText: isUni ? 'Location or Room' : 'Place (optional)',
+                          hintText: 'Location or place (optional)',
                           hintStyle: TextStyle(
                               color: AppColors.textSecondaryOpacity(0.6)),
                           border: InputBorder.none,
@@ -543,7 +577,8 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
 
                     // Notes / Instructor Input
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(16),
@@ -556,7 +591,7 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary),
                         decoration: InputDecoration(
-                          hintText: isUni ? 'Instructor' : 'Notes (optional)',
+                          hintText: 'Details or notes (optional)',
                           hintStyle: TextStyle(
                               color: AppColors.textSecondaryOpacity(0.6)),
                           border: InputBorder.none,
@@ -565,10 +600,11 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Linked Task (Personal only)
-                    if (!isUni) ...[
+                    // Any schedule entry can be connected to a task.
+                    ...[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppColors.surface,
                           borderRadius: BorderRadius.circular(16),
@@ -582,7 +618,8 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                                 style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.textSecondaryOpacity(0.6))),
+                                    color:
+                                        AppColors.textSecondaryOpacity(0.6))),
                             style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -590,22 +627,24 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                             items: [
                               const DropdownMenuItem<String?>(
                                   value: null, child: Text('No linked task')),
-                              ...(ref.read(tasksProvider).valueOrNull ?? []).map((task) =>
-                                  DropdownMenuItem<String?>(
+                              ...(ref.read(tasksProvider).valueOrNull ?? [])
+                                  .map((task) => DropdownMenuItem<String?>(
                                       value: task.id,
                                       child: Text(task.title,
                                           overflow: TextOverflow.ellipsis))),
                             ],
-                            onChanged: (value) => setState(() => _taskId = value),
+                            onChanged: (value) =>
+                                setState(() => _taskId = value),
                           ),
                         ),
                       ),
                     ],
-              // Floating Save Button
+                    // Floating Save Button
                     SafeArea(
                       top: false,
                       child: Padding(
-                        padding: EdgeInsets.fromLTRB(24, 16, 24, viewInsets > 0 ? viewInsets + 16 : 24),
+                        padding: EdgeInsets.fromLTRB(
+                            24, 16, 24, viewInsets > 0 ? viewInsets + 16 : 24),
                         child: GestureDetector(
                           onTap: _save,
                           child: Container(
@@ -615,12 +654,18 @@ class _TimetableEditorSheetState extends ConsumerState<_TimetableEditorSheet> {
                               color: Color(_selectedColor),
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
-                                BoxShadow(color: Color(_selectedColor).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
+                                BoxShadow(
+                                    color: Color(_selectedColor)
+                                        .withValues(alpha: 0.3),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4)),
                               ],
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              widget.entry == null ? 'Create ${isUni ? 'class' : 'activity'}' : 'Save changes',
+                              widget.entry == null
+                                  ? 'Create entry'
+                                  : 'Save changes',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,

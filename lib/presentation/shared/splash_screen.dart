@@ -119,7 +119,7 @@ class _SplashScreenState extends State<SplashScreen> {
                             child: Stack(
                               clipBehavior: Clip.none,
                               children: [
-                                // 1. Roadmaps (Bottom right, side-by-side with Reminders)
+                                // Feature labels around the welcome message.
                                 _FloatingPill(
                                   text: "Roadmaps",
                                   color: const Color(0xFFF97316),
@@ -141,7 +141,7 @@ class _SplashScreenState extends State<SplashScreen> {
                                 ),
                                 // 3. Smart Tasks (Middle Left)
                                 _FloatingPill(
-                                  text: "Smart Tasks",
+                                  text: "Tasks",
                                   color: const Color(0xFFFBBF24),
                                   angle: 0,
                                   width: w * 0.52,
@@ -152,7 +152,7 @@ class _SplashScreenState extends State<SplashScreen> {
                                 ),
                                 // 4. Timetables (Top Right, staggered down to fit between Focus and Smart Tasks)
                                 _FloatingPill(
-                                  text: "Timetables",
+                                  text: "Class schedules",
                                   color: const Color(0xFF4ADE80),
                                   angle: 0.12,
                                   width: w * 0.55,
@@ -162,7 +162,7 @@ class _SplashScreenState extends State<SplashScreen> {
                                 ),
                                 // 5. Deep Focus (Top Left)
                                 _FloatingPill(
-                                  text: "Deep Focus",
+                                  text: "Focus sessions",
                                   color: const Color(0xFFF2623E),
                                   angle: -0.12,
                                   width: w * 0.50,
@@ -182,7 +182,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     // MIDDLE: Typography Section
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 32),
-                      child: _DynamicTypography(),
+                      child: _WelcomeMessage(),
                     ),
 
                     SizedBox(height: compact ? 16 : 56),
@@ -282,58 +282,14 @@ class _FloatingPill extends StatelessWidget {
   }
 }
 
-class _DynamicTypography extends StatefulWidget {
-  const _DynamicTypography();
-  @override
-  State<_DynamicTypography> createState() => _DynamicTypographyState();
-}
-
-class _DynamicTypographyState extends State<_DynamicTypography> {
-  int _currentIndex = 0;
-  final List<String> _phrases = [
-    "Focus deeply.\nExecute flawlessly.",
-    "Master your time.\nOwn your outcomes.",
-    "Plan precision.\nAchieve consistency."
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _cycleText();
-  }
-
-  void _cycleText() async {
-    while (mounted) {
-      await Future.delayed(const Duration(seconds: 4));
-      if (!mounted) break;
-      setState(() {
-        _currentIndex = (_currentIndex + 1) % _phrases.length;
-      });
-    }
-  }
+class _WelcomeMessage extends StatelessWidget {
+  const _WelcomeMessage();
 
   @override
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).height < 820;
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 800),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (Widget child, Animation<double> animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0.0, 0.1),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
-          ),
-        );
-      },
-      child: Text(
-        _phrases[_currentIndex],
-        key: ValueKey<int>(_currentIndex),
+    return Text(
+        'Plan your day.\nStart with one task.',
         style: TextStyle(
           fontSize: compact ? 34 : 44,
           fontWeight: FontWeight.w800,
@@ -341,8 +297,7 @@ class _DynamicTypographyState extends State<_DynamicTypography> {
           height: 1.15,
           letterSpacing: -1.2,
         ),
-      ),
-    );
+      );
   }
 }
 

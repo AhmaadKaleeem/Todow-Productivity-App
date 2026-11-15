@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/core/theme/app_colors.dart';
 import 'package:todow/domain/models/attachment.dart';
 import 'package:todow/domain/models/task.dart';
-import 'package:todow/presentation/providers/task_providers.dart';
+import 'package:todow/presentation/features/tasks/task_providers.dart';
 
 class AttachmentListWidget extends ConsumerStatefulWidget {
   const AttachmentListWidget({super.key, required this.task});

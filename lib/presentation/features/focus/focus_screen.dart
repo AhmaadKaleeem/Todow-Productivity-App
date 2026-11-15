@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/core/theme/app_colors.dart';
 import 'package:todow/core/utils/date_format.dart';
@@ -11,11 +12,11 @@ import 'package:todow/domain/models/focus_activity_template.dart';
 import 'package:todow/domain/models/focus_session.dart';
 import 'package:todow/domain/models/focus_timeline.dart';
 import 'package:todow/domain/models/task.dart';
-import 'package:todow/presentation/providers/focus_providers.dart';
-import 'package:todow/presentation/providers/task_providers.dart';
-import 'package:todow/presentation/widgets/beautiful_back_button.dart';
-import 'package:todow/presentation/widgets/corner_arc_decor.dart';
-import 'package:todow/presentation/widgets/focus_activity_scene.dart';
+import 'package:todow/presentation/features/focus/focus_providers.dart';
+import 'package:todow/presentation/features/tasks/task_providers.dart';
+import 'package:todow/presentation/shared/beautiful_back_button.dart';
+import 'package:todow/presentation/shared/corner_arc_decor.dart';
+import 'package:todow/presentation/features/focus/focus_activity_scene.dart';
 import 'package:uuid/uuid.dart';
 
 class FocusScreen extends ConsumerStatefulWidget {
@@ -38,6 +39,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
   String? _taskId;
   bool _zenMode = false;
   bool _showWorkspace = true;
+  bool _showFocusClock = false;
   late final TextEditingController _manualTimeController;
 
   @override
@@ -195,11 +197,22 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
   Widget build(BuildContext context) {
     final session = ref.watch(focusSessionProvider);
     final focus = ref.read(focusSessionProvider.notifier);
-    final tasks = ref.watch(activeTasksProvider).valueOrNull ?? [];
+    final tasks = (ref.watch(tasksProvider).valueOrNull ?? [])
+        .where((task) =>
+            task.status != TaskStatus.completed &&
+            task.status != TaskStatus.archived)
+        .toList();
     _syncTicker(
       enabled: session?.status == FocusSessionStatus.running &&
           session!.remainingAt(DateTime.now()) > Duration.zero,
     );
+
+    if (session != null && _showFocusClock) {
+      return _FocusClockView(
+        remaining: focus.remaining(DateTime.now()),
+        onExit: () => setState(() => _showFocusClock = false),
+      );
+    }
 
     if (session != null && _showWorkspace) {
       return _ActiveFocusView(
@@ -208,6 +221,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
         focus: focus,
         zenMode: _zenMode,
         onToggleZen: () => setState(() => _zenMode = !_zenMode),
+        onOpenClock: () => setState(() => _showFocusClock = true),
         onCloseWorkspace: () => setState(() => _showWorkspace = false),
       );
     }
@@ -242,7 +256,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                         children: [
                           Expanded(
                             child: _buildSectionTitle(session != null
-                                ? 'CHOOSE NEXT ENVIRONMENT'
+                                ? 'CHOOSE AN ACTIVITY'
                                 : 'FOCUS ACTIVITY'),
                           ),
                           TextButton.icon(
@@ -535,7 +549,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
           ),
           const SizedBox(height: 14),
           const Text(
-            'Your Dedicated Time For Tasks',
+            'Give one task your full attention.',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
@@ -546,7 +560,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
           ),
           const SizedBox(height: 6),
           const Text(
-            'Track uninterrupted time on coursework, revisions, or papers.',
+            'Choose an activity and duration. Link a task if you want a clear starting point.',
             style: TextStyle(
               fontSize: 13,
               color: AppColors.textSecondary,
@@ -562,10 +576,10 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
     return Text(
       title,
       style: const TextStyle(
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: FontWeight.w800,
-        color: AppColors.textSecondary,
-        letterSpacing: 0.8,
+        color: AppColors.textPrimary,
+        letterSpacing: 0.3,
       ),
     );
   }
@@ -654,7 +668,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Text(
-                'Create your own activity, with an optional group and subgroup.',
+                'Name an activity and choose a workspace that fits it.',
                 style: TextStyle(color: AppColors.textSecondary, height: 1.4),
               ),
             )
@@ -667,34 +681,6 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
         if (!isCustom && activities.length > 2)
           _buildActivityListToggle(activities.length),
         const SizedBox(height: 12),
-        FocusActivityScene(
-          preset: _preset,
-          timeline: FocusTimeline.preview,
-          isRunning: false,
-          compact: true,
-          showPhaseLabel: false,
-          activityLabel: _selectedTemplate?.name,
-          mixedEnvironment: _selectedTemplate?.visualPreset == null &&
-              _selectedTemplate != null,
-          accent: _selectedTemplate == null
-              ? null
-              : _templateAccent(_selectedTemplate!),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _selectedTemplate == null
-              ? FocusActivityDefinition.forActivity(_preset).description
-              : _selectedTemplate!.visualPreset == null
-                  ? 'A mixed workspace built for ${_selectedTemplate!.name}.'
-                  : FocusActivityDefinition.forActivity(
-                      _selectedTemplate!.visualPreset!,
-                    ).description,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 13,
-            height: 1.4,
-          ),
-        ),
         if (_selectedTemplate == null && _preset == FocusPreset.flow) ...[
           const SizedBox(height: 10),
           _buildUltradianCard(),
@@ -741,9 +727,6 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
     final preset = definition.activity;
     final selected = _selectedTemplate == null && _preset == preset;
     final gradient = _activityGradient(_activityCategory);
-    final workSurface = preset == FocusPreset.flow
-        ? 'FOCUS  ${_customDuration.inMinutes} MIN  ·  RECOVER  20 MIN'
-        : definition.workSurface;
     return Semantics(
       button: true,
       selected: selected,
@@ -758,6 +741,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                 : const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+            constraints: const BoxConstraints(minHeight: 48),
             decoration: BoxDecoration(
               color: selected ? null : AppColors.surface,
               gradient: selected ? gradient : null,
@@ -779,20 +763,6 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                           color: AppColors.textPrimary,
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        workSurface,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: selected
-                              ? AppColors.textPrimary
-                              : AppColors.textSecondary,
-                          fontSize: 10,
-                          letterSpacing: 0.15,
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -1124,9 +1094,6 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
             : 0;
     return _gradientPalette(palette);
   }
-
-  Color _templateAccent(FocusActivityTemplate activity) =>
-      _templateGradient(activity).colors.first;
 
   LinearGradient _gradientPalette(int index) => switch (index) {
         0 => const LinearGradient(
@@ -1517,7 +1484,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        selectedTask?.title ?? 'No task linked',
+                        selectedTask?.title ?? 'No task selected',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -1531,8 +1498,8 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                       const SizedBox(height: 2),
                       Text(
                         selectedTask != null
-                            ? 'Tap to switch or detach task'
-                            : 'Link an active task to focus on',
+                            ? 'Tap to choose or clear a task'
+                            : 'Choose a task for this session',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -1587,7 +1554,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                 child: Row(
                   children: [
                     const Text(
-                      'Select Focus Task',
+                      'Choose a task',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -1600,7 +1567,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                         setState(() => _taskId = null);
                         Navigator.pop(context);
                       },
-                      child: const Text('None'),
+                      child: const Text('Clear selection'),
                     ),
                   ],
                 ),
@@ -1610,7 +1577,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                 child: tasks.isEmpty
                     ? const Center(
                         child: Text(
-                          'No active tasks found.',
+                          'No open tasks to link. You can start without a task.',
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
                       )
@@ -1717,7 +1684,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
             const Icon(Icons.play_arrow_rounded, size: 24),
             const SizedBox(width: 8),
             Text(
-              'Start Focus • ${_customDuration.inMinutes} min',
+              'Start ${_customDuration.inMinutes}-minute focus',
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -1743,6 +1710,7 @@ class _ActiveFocusView extends StatefulWidget {
     required this.focus,
     required this.zenMode,
     required this.onToggleZen,
+    required this.onOpenClock,
     required this.onCloseWorkspace,
   });
 
@@ -1751,6 +1719,7 @@ class _ActiveFocusView extends StatefulWidget {
   final FocusNotifier focus;
   final bool zenMode;
   final VoidCallback onToggleZen;
+  final VoidCallback onOpenClock;
   final VoidCallback onCloseWorkspace;
 
   @override
@@ -1784,13 +1753,16 @@ class _ActiveFocusViewState extends State<_ActiveFocusView> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: FocusActivityScene(
-              preset: preset,
-              timeline: timeline,
-              isRunning: isRunning,
-              activityLabel: widget.session.activityName,
-              mixedEnvironment: widget.session.mixedEnvironment,
-              accent: widget.session.activityName == null ? null : accent,
+            child: Opacity(
+              opacity: 0.16,
+              child: FocusActivityScene(
+                preset: preset,
+                timeline: timeline,
+                isRunning: isRunning,
+                activityLabel: widget.session.activityName,
+                mixedEnvironment: widget.session.mixedEnvironment,
+                accent: widget.session.activityName == null ? null : accent,
+              ),
             ),
           ),
 
@@ -1809,6 +1781,17 @@ class _ActiveFocusViewState extends State<_ActiveFocusView> {
                         backgroundColor: AppColors.surface,
                         foregroundColor: AppColors.textPrimary,
                       ),
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        tooltip: 'Lock focus screen',
+                        onPressed: widget.onOpenClock,
+                        icon: const Icon(Icons.fullscreen_rounded),
+                        style: IconButton.styleFrom(
+                          minimumSize: const Size(48, 48),
+                          backgroundColor: AppColors.surface,
+                          foregroundColor: AppColors.textPrimary,
+                        ),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -1817,10 +1800,10 @@ class _ActiveFocusViewState extends State<_ActiveFocusView> {
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.right,
                           style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
                             letterSpacing: 0.2,
-                            color: textSecondaryColor,
+                            color: textPrimaryColor,
                           ),
                         ),
                       ),
@@ -1846,10 +1829,10 @@ class _ActiveFocusViewState extends State<_ActiveFocusView> {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
                               letterSpacing: -0.2,
-                              color: textSecondaryColor,
+                              color: textPrimaryColor,
                             ),
                           ),
                           const SizedBox(height: 14),
@@ -2010,19 +1993,85 @@ class _ActiveFocusViewState extends State<_ActiveFocusView> {
   String _motivationMessage(FocusTimeline timeline, FocusPreset preset) {
     if (timeline.phase == FocusAnimationPhase.completion) {
       return preset == FocusPreset.flow
-          ? 'Work block complete. Begin your ${preset.restDuration.inMinutes}-minute recovery break.'
-          : 'Session complete. Take a well-earned rest.';
+          ? 'Focus block complete. Take a ${preset.restDuration.inMinutes}-minute break.'
+          : 'Session complete. Take a break.';
     }
     return switch (timeline.phase) {
       FocusAnimationPhase.entry =>
-        'Arrive at the task. Let your attention settle.',
-      FocusAnimationPhase.settling => 'Choose one clear next step and begin.',
-      FocusAnimationPhase.deepFocus => 'Stay with the thread of work.',
-      FocusAnimationPhase.progression => 'Keep one goal in view.',
+        'Take a moment, then begin.',
+      FocusAnimationPhase.settling => 'Choose a next step and begin.',
+      FocusAnimationPhase.deepFocus => 'Keep working on this task.',
+      FocusAnimationPhase.progression => 'Stay with your current goal.',
       FocusAnimationPhase.finalPhase =>
-        'Find a good stopping point and leave a note for next time.',
+        'When you stop, leave a note about what to do next.',
       FocusAnimationPhase.completion => 'Session complete.',
     };
+  }
+}
+
+class _FocusClockView extends StatefulWidget {
+  const _FocusClockView({required this.remaining, required this.onExit});
+
+  final Duration remaining;
+  final VoidCallback onExit;
+
+  @override
+  State<_FocusClockView> createState() => _FocusClockViewState();
+}
+
+class _FocusClockViewState extends State<_FocusClockView> {
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
+
+  @override
+  void dispose() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SizedBox.expand(
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                _formatRemainingTime(widget.remaining),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: size.shortestSide * 0.28,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -2,
+                  height: 1,
+                  color: AppColors.textPrimary,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 20,
+              child: TextButton(
+                onPressed: widget.onExit,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  minimumSize: const Size(88, 48),
+                ),
+                child: const Text('Exit'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -2078,13 +2127,13 @@ Future<void> _showEndSessionDialog(
         style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
       ),
       content: const Text(
-        'Your elapsed study time will be saved. Are you sure you want to wrap up early?',
+        'Your focus time will be saved. End this session now?',
         style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Continue Focusing'),
+          child: const Text('Continue focus session'),
         ),
         FilledButton(
           style: FilledButton.styleFrom(

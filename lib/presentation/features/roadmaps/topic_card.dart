@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/core/theme/app_colors.dart';
 import 'package:todow/domain/models/roadmap.dart';
 import 'package:todow/domain/models/task.dart';
-import 'package:todow/presentation/screens/task_editor_screen.dart';
-import 'package:todow/presentation/providers/task_providers.dart';
+import 'package:todow/presentation/features/tasks/task_editor_screen.dart';
+import 'package:todow/presentation/features/tasks/task_providers.dart';
 
 // Even index → card aligned left side; odd → right side.
 // This drives the zigzag composition.

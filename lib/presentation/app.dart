@@ -1,10 +1,8 @@
-export 'screens/app_shell.dart';
-export 'screens/today_screen.dart';
-export 'screens/tasks_screen.dart';
-export 'screens/focus_screen.dart';
-export 'screens/timetable_screen.dart';
-export 'widgets/empty_state.dart';
-export 'screens/task_editor_screen.dart';
-export 'widgets/timetable_editor.dart';
-
-
+export 'app_shell.dart';
+export 'features/home/home_screen.dart';
+export 'features/tasks/tasks_screen.dart';
+export 'features/focus/focus_screen.dart';
+export 'features/timetable/timetable_screen.dart';
+export 'shared/empty_state.dart';
+export 'features/tasks/task_editor_screen.dart';
+export 'features/timetable/timetable_editor.dart';

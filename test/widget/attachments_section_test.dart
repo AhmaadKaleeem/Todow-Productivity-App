@@ -5,7 +5,7 @@ import 'package:todow/domain/models/task.dart';
 import 'package:todow/domain/models/enums.dart';
 import 'package:todow/domain/models/reminder.dart';
 import 'package:todow/domain/models/attachment.dart';
-import 'package:todow/presentation/widgets/attachments_section.dart';
+import 'package:todow/presentation/features/tasks/attachments_section.dart';
 
 import 'package:todow/core/providers/service_providers.dart';
 import 'package:todow/domain/repositories/attachment_repository.dart';

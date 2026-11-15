@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:todow/presentation/providers/task_providers.dart';
+import 'package:todow/presentation/features/tasks/task_providers.dart';
 import 'package:todow/core/providers/service_providers.dart';
 import 'package:todow/core/theme/app_colors.dart';
 import 'package:todow/domain/models/attachment.dart';

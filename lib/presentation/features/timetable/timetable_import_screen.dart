@@ -15,22 +15,28 @@ import 'package:todow/core/utils/date_format.dart';
 import 'package:todow/data/timetable_import_parser.dart';
 import 'package:todow/domain/models/enums.dart';
 import 'package:todow/domain/models/timetable_import.dart';
-import 'package:todow/presentation/providers/timetable_providers.dart';
+import 'package:todow/presentation/features/timetable/timetable_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class TimetableImportScreen extends ConsumerStatefulWidget {
-  const TimetableImportScreen({required this.scheduleKind, super.key});
+  const TimetableImportScreen({
+    required this.scheduleKind,
+    required this.scheduleName,
+    super.key,
+  });
 
   final TimetableKind scheduleKind;
+  final String scheduleName;
 
   @override
-  ConsumerState<TimetableImportScreen> createState() => _TimetableImportScreenState();
+  ConsumerState<TimetableImportScreen> createState() =>
+      _TimetableImportScreenState();
 }
 
 class _TimetableImportScreenState extends ConsumerState<TimetableImportScreen> {
   static const _parser = TimetableImportParser();
   static const _csvPrompt =
-      'Extract this timetable to a CSV with headers: course, instructor, day, start_time, end_time, room. One row per class. Use full days (e.g., Monday) and 24h times (e.g., 08:30). Leave missing info blank. Output RAW CSV ONLY.';
+      'Extract this schedule to a CSV with headers: name, instructor, day, start_time, end_time, room. One row per scheduled entry. Use full days (e.g., Monday) and 24h times (e.g., 08:30). Leave missing info blank. Output RAW CSV ONLY.';
   final _imagePicker = ImagePicker();
   TimetableImportDraft? _draft;
   String? _sourceName;
@@ -112,9 +118,13 @@ class _TimetableImportScreenState extends ConsumerState<TimetableImportScreen> {
   }
 
   String get _failureMessage => switch (_ocrAttempts) {
-        0 || 1 => "We couldn't extract the timetable clearly. Please ensure the photo is well-lit and in focus.",
-        2 => "Still having trouble. Please check the image quality or try a different photo.",
-        _ => "We couldn't read the text. You may need to crop the image or type the details manually.",
+        0 ||
+        1 =>
+          "We couldn't extract the timetable clearly. Please ensure the photo is well-lit and in focus.",
+        2 =>
+          "Still having trouble. Please check the image quality or try a different photo.",
+        _ =>
+          "We couldn't read the text. You may need to crop the image or type the details manually.",
       };
 
   void _showMessage(String message) {
@@ -129,7 +139,7 @@ class _TimetableImportScreenState extends ConsumerState<TimetableImportScreen> {
 
   Future<void> _saveCsvTemplate() async {
     const contents =
-        'course,instructor,day,start_time,end_time,room\r\nAI,Dr Smith,Monday,08:00,09:30,Lab 04\r\n';
+        'name,instructor,day,start_time,end_time,room\r\nStudy group,Alex,Monday,08:00,09:30,Library\r\n';
     final bytes = Uint8List.fromList(utf8.encode(contents));
     setState(() => _loading = true);
     try {
@@ -172,7 +182,7 @@ class _TimetableImportScreenState extends ConsumerState<TimetableImportScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Import ${_scheduleLabel(widget.scheduleKind)} timetable'),
+        title: Text('Import ${widget.scheduleName} schedule'),
         backgroundColor: AppColors.background,
       ),
       body: _loading
@@ -180,6 +190,7 @@ class _TimetableImportScreenState extends ConsumerState<TimetableImportScreen> {
               child: CircularProgressIndicator(color: AppColors.action))
           : draft == null
               ? _ImportChoices(
+                  scheduleName: widget.scheduleName,
                   supportsOcr: _supportsOcr,
                   failureMessage: _ocrMessage,
                   attempts: _ocrAttempts,
@@ -197,12 +208,14 @@ class _TimetableImportScreenState extends ConsumerState<TimetableImportScreen> {
                   draft: draft,
                   sourceName: _sourceName ?? 'Timetable file',
                   scheduleKind: widget.scheduleKind,
+                  scheduleName: widget.scheduleName,
                   onCancel: () => setState(() {
                     _draft = null;
                     _sourceName = null;
                   }),
                   onImport: (rows) async {
-                    final timetableNotifier = ref.read(timetableProvider.notifier);
+                    final timetableNotifier =
+                        ref.read(timetableProvider.notifier);
                     setState(() => _loading = true);
                     try {
                       await timetableNotifier.importEntries(
@@ -212,8 +225,10 @@ class _TimetableImportScreenState extends ConsumerState<TimetableImportScreen> {
                     } catch (error, st) {
                       if (!mounted) return;
                       setState(() => _loading = false);
-                      debugPrint('[ERR-IMP-01] Timetable import failed: $error\n$st');
-                      _showMessage("We encountered an issue importing your timetable. Please review the CSV format and try again.");
+                      debugPrint(
+                          '[ERR-IMP-01] Timetable import failed: $error\n$st');
+                      _showMessage(
+                          "We encountered an issue importing your timetable. Please review the CSV format and try again.");
                     }
                   },
                 ),
@@ -221,11 +236,9 @@ class _TimetableImportScreenState extends ConsumerState<TimetableImportScreen> {
   }
 }
 
-String _scheduleLabel(TimetableKind kind) =>
-    kind == TimetableKind.university ? 'University' : 'Personal';
-
 class _ImportChoices extends StatelessWidget {
   const _ImportChoices({
+    required this.scheduleName,
     required this.supportsOcr,
     required this.failureMessage,
     required this.attempts,
@@ -238,6 +251,7 @@ class _ImportChoices extends StatelessWidget {
     required this.onTemplate,
   });
 
+  final String scheduleName;
   final bool supportsOcr;
   final String? failureMessage;
   final int attempts;
@@ -253,7 +267,7 @@ class _ImportChoices extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
         children: [
-          const Text('Bring your classes in',
+          Text('Import $scheduleName',
               style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
@@ -267,7 +281,7 @@ class _ImportChoices extends StatelessWidget {
           _ImportOption(
             icon: Icons.table_chart_outlined,
             title: 'CSV file',
-            subtitle: 'A row for each weekday class',
+            subtitle: 'A row for each scheduled entry',
             onTap: onFile,
           ),
           const SizedBox(height: 10),
@@ -457,7 +471,7 @@ class _CsvFormatNote extends StatelessWidget {
                       ),
                       SizedBox(height: 6),
                       Text(
-                        'CSV columns: course, instructor, day, start_time, end_time, room. Days can use full or short names; times can use 24-hour or AM/PM format.',
+                        'CSV columns: name, instructor, day, start_time, end_time, room. Course-name files are also supported. Days can use full or short names; times can use 24-hour or AM/PM format.',
                         style: TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 12,
@@ -493,6 +507,7 @@ class _TimetableDraftReview extends StatefulWidget {
     required this.draft,
     required this.sourceName,
     required this.scheduleKind,
+    required this.scheduleName,
     required this.onCancel,
     required this.onImport,
     super.key,
@@ -501,6 +516,7 @@ class _TimetableDraftReview extends StatefulWidget {
   final TimetableImportDraft draft;
   final String sourceName;
   final TimetableKind scheduleKind;
+  final String scheduleName;
   final VoidCallback onCancel;
   final ValueChanged<List<TimetableDraftEntry>> onImport;
 
@@ -531,19 +547,17 @@ class _TimetableDraftReviewState extends State<_TimetableDraftReview> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
               children: [
-                Text('Review ${_rows.length} classes',
+                Text('Review ${_rows.length} entries',
                     style: const TextStyle(
                         fontSize: 23,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary)),
                 const SizedBox(height: 4),
-                Text(
-                    '${widget.sourceName} · ${_scheduleName(widget.scheduleKind)} timetable',
+                Text('${widget.sourceName} · ${widget.scheduleName} schedule',
                     style: const TextStyle(
                         fontSize: 13, color: AppColors.textSecondary)),
                 const SizedBox(height: 8),
-                const Text(
-                    'Check every course, day, and time before adding it.',
+                const Text('Check each name, day, and time before adding it.',
                     style: TextStyle(
                         fontSize: 14,
                         height: 1.4,
@@ -574,7 +588,7 @@ class _TimetableDraftReviewState extends State<_TimetableDraftReview> {
                     onPressed: () =>
                         setState(() => _rows.add(_DraftRow.empty())),
                     icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add another class'),
+                    label: const Text('Add another entry'),
                   ),
                 ),
               ],
@@ -593,7 +607,7 @@ class _TimetableDraftReviewState extends State<_TimetableDraftReview> {
                       ? () => widget
                           .onImport(_rows.map((row) => row.toEntry).toList())
                       : null,
-                  child: Text('Import ${_rows.length} classes'),
+                  child: Text('Import ${_rows.length} entries'),
                 ),
               ]),
             ),
@@ -601,9 +615,6 @@ class _TimetableDraftReviewState extends State<_TimetableDraftReview> {
         ],
       );
 }
-
-String _scheduleName(TimetableKind kind) =>
-    kind == TimetableKind.university ? 'University' : 'Personal';
 
 class _DraftRow {
   _DraftRow({
@@ -709,7 +720,7 @@ class _DraftRowCard extends StatelessWidget {
                       color: AppColors.textSecondary))),
           IconButton(
               onPressed: onDelete,
-              tooltip: 'Remove class from draft',
+              tooltip: 'Remove entry from draft',
               icon: const Icon(Icons.close, size: 19)),
         ]),
         TextField(

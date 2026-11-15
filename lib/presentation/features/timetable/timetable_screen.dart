@@ -6,13 +6,13 @@ import 'package:todow/core/utils/date_format.dart';
 import 'package:todow/domain/models/enums.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todow/domain/models/timetable_entry.dart';
-import 'package:todow/presentation/providers/timetable_providers.dart';
-import 'package:todow/presentation/providers/task_providers.dart';
+import 'package:todow/presentation/features/timetable/timetable_providers.dart';
+import 'package:todow/presentation/features/tasks/task_providers.dart';
 
-import 'package:todow/presentation/screens/timetable_import_screen.dart';
-import 'package:todow/presentation/screens/app_shell.dart';
-import 'package:todow/presentation/widgets/timetable_editor.dart';
-import 'package:todow/presentation/widgets/timetable_semantics.dart';
+import 'package:todow/presentation/features/timetable/timetable_import_screen.dart';
+import 'package:todow/presentation/app_shell.dart';
+import 'package:todow/presentation/features/timetable/timetable_editor.dart';
+import 'package:todow/presentation/features/timetable/timetable_semantics.dart';
 
 const List<Color> _kTimetableColors = [
   Color(0xFF1E3A8A), // deep navy
@@ -28,12 +28,6 @@ const List<Color> _kTimetableColors = [
 
 const Color _kUniversityFallback = Color(0xFF1E3A8A); // deep navy
 const Color _kPersonalFallback = Color(0xFF059669); // emerald
-const Map<String, String> _personalScheduleProfiles = {
-  'Office job': 'A weekly schedule for work and commitments',
-  'Freelance': 'A flexible schedule for client work and projects',
-  'Personal': 'A weekly schedule for the rest of your life',
-};
-
 Color getEntryColor(TimetableEntry entry) {
   if (entry.colorValue != null) return Color(entry.colorValue!);
   return _kTimetableColors[entry.id.hashCode.abs() % _kTimetableColors.length];
@@ -53,9 +47,11 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
   late Weekday _selectedDay;
   late DateTime _selectedDate;
   TimetableKind _selectedKind = TimetableKind.university;
+  String _primaryProfileName = 'Schedule';
+  String _primaryProfileDescription = 'Your primary weekly schedule';
   String _personalProfileName = 'Personal';
   String _personalProfileDescription =
-      'Your own schedule for classes, study, and activities';
+      'Your other weekly activities and commitments';
   _TimetableView _view = _TimetableView.day;
   Timer? _timer;
 
@@ -71,100 +67,113 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
 
   Future<void> _loadPersonalScheduleProfile() async {
     final preferences = await SharedPreferences.getInstance();
+    final primaryName = preferences.getString('timetable_primary_profile_name');
+    final primaryDescription =
+        preferences.getString('timetable_primary_profile_description');
     final name = preferences.getString('timetable_personal_profile_name');
     final description =
         preferences.getString('timetable_personal_profile_description');
-    if (!mounted || name == null || name.trim().isEmpty) return;
+    if (!mounted) return;
     setState(() {
-      _personalProfileName = name;
-      _personalProfileDescription = description ?? 'Your weekly schedule';
+      if (primaryName != null && primaryName.trim().isNotEmpty) {
+        _primaryProfileName = primaryName;
+      }
+      if (primaryDescription != null && primaryDescription.trim().isNotEmpty) {
+        _primaryProfileDescription = primaryDescription;
+      }
+      if (name != null && name.trim().isNotEmpty) {
+        _personalProfileName = name;
+        _personalProfileDescription = description ?? 'Your weekly schedule';
+      }
     });
   }
 
-  Future<void> _choosePersonalScheduleProfile() async {
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Choose a schedule profile',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
-              for (final entry in _personalScheduleProfiles.entries)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(entry.key),
-                  subtitle: Text(entry.value),
-                  trailing: _personalProfileName == entry.key
-                      ? const Icon(Icons.check, color: AppColors.action)
-                      : null,
-                  onTap: () => Navigator.pop(context, entry.key),
-                ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.edit_outlined),
-                title: const Text('Use a custom name'),
-                onTap: () => Navigator.pop(context, '__custom__'),
-              ),
-            ],
-          ),
-        ),
-      ),
+  Future<void> _chooseScheduleProfile(TimetableKind kind) async {
+    final isPrimary = kind == TimetableKind.university;
+    final nameController = TextEditingController(
+      text: isPrimary ? _primaryProfileName : _personalProfileName,
     );
-    if (!mounted || selected == null) return;
-
-    String name;
-    String description;
-    if (selected == '__custom__') {
-      final controller = TextEditingController(text: _personalProfileName);
-      final customName = await showDialog<String>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Name this schedule'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            maxLength: 32,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(hintText: 'For example, Studio'),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel')),
-            FilledButton(
-                onPressed: () => Navigator.pop(context, controller.text.trim()),
-                child: const Text('Save')),
+    final descriptionController = TextEditingController(
+      text:
+          isPrimary ? _primaryProfileDescription : _personalProfileDescription,
+    );
+    final result = await showDialog<(String, String)>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit schedule'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              autofocus: true,
+              maxLength: 32,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(labelText: 'Schedule name'),
+            ),
+            TextField(
+              controller: descriptionController,
+              maxLength: 80,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
           ],
         ),
-      );
-      controller.dispose();
-      if (!mounted || customName == null || customName.isEmpty) return;
-      name = customName;
-      description = 'Your own weekly schedule';
-    } else {
-      name = selected;
-      description = _personalScheduleProfiles[selected]!;
-    }
-
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              if (name.isEmpty) return;
+              Navigator.pop(
+                context,
+                (name, descriptionController.text.trim()),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    nameController.dispose();
+    descriptionController.dispose();
+    if (!mounted || result == null) return;
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setString('timetable_personal_profile_name', name);
+    final (name, description) = result;
     await preferences.setString(
-        'timetable_personal_profile_description', description);
+      isPrimary
+          ? 'timetable_primary_profile_name'
+          : 'timetable_personal_profile_name',
+      name,
+    );
+    await preferences.setString(
+      isPrimary
+          ? 'timetable_primary_profile_description'
+          : 'timetable_personal_profile_description',
+      description.isEmpty ? 'Your schedule' : description,
+    );
     if (!mounted) return;
     ref.invalidate(personalTimetableProfileNameProvider);
     setState(() {
-      _personalProfileName = name;
-      _personalProfileDescription = description;
+      if (isPrimary) {
+        _primaryProfileName = name;
+        _primaryProfileDescription =
+            description.isEmpty ? 'Your schedule' : description;
+      } else {
+        _personalProfileName = name;
+        _personalProfileDescription =
+            description.isEmpty ? 'Your schedule' : description;
+      }
     });
   }
 
   String _scheduleNameFor(TimetableKind kind) =>
-      kind == TimetableKind.university ? 'University' : _personalProfileName;
+      kind == TimetableKind.university
+          ? _primaryProfileName
+          : _personalProfileName;
 
   @override
   void dispose() {
@@ -228,17 +237,13 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(entry.scheduleKind == TimetableKind.personal
-            ? 'Delete this activity?'
-            : 'Delete this class?'),
+        title: const Text('Delete this entry?'),
         content: Text(
             '${entry.courseName} will be removed from ${entry.weekday.fullLabel} in your ${_scheduleNameFor(entry.scheduleKind).toLowerCase()} timetable.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: Text(entry.scheduleKind == TimetableKind.personal
-                  ? 'Keep activity'
-                  : 'Keep class')),
+              child: const Text('Keep entry')),
           FilledButton(
               onPressed: () => Navigator.pop(context, true),
               child: const Text('Delete')),
@@ -249,7 +254,10 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
   }
 
   void _openImport() => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => TimetableImportScreen(scheduleKind: _selectedKind),
+        builder: (_) => TimetableImportScreen(
+          scheduleKind: _selectedKind,
+          scheduleName: _scheduleNameFor(_selectedKind),
+        ),
       ));
 
   Future<void> _edit(TimetableEntry entry) => showTimetableEditor(
@@ -326,7 +334,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
         ref.read(timetableEntriesForKindProvider(TimetableKind.university));
     if (source.isEmpty) {
       _showCopyFeedback(
-        'Add university classes before copying them.',
+        'Add entries to $_primaryProfileName before copying them.',
         icon: Icons.info_outline_rounded,
         color: AppColors.attention,
       );
@@ -356,8 +364,8 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
     if (mounted) {
       _showCopyFeedback(
         copied == 0
-            ? 'University classes are already in Personal.'
-            : '$copied ${copied == 1 ? 'class' : 'classes'} copied from University to Personal. You can edit them there.',
+            ? '$_primaryProfileName entries are already in $_personalProfileName.'
+            : '$copied ${copied == 1 ? 'entry' : 'entries'} copied from $_primaryProfileName to $_personalProfileName. You can edit them there.',
         icon: copied == 0
             ? Icons.check_circle_outline_rounded
             : Icons.copy_all_rounded,
@@ -437,15 +445,13 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                     scheduleKind: _selectedKind,
                   ),
               icon: const Icon(Icons.add),
-              tooltip: _selectedKind == TimetableKind.personal
-                  ? 'Add activity'
-                  : 'Add class'),
+              tooltip: 'Add entry'),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
         children: [
-          // Kind selector — University (navy) / Personal (violet)
+          // Keep the two local schedule buckets, while letting users name them.
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
@@ -457,7 +463,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
               children: [
                 Expanded(
                   child: _TabButton(
-                    label: 'University',
+                    label: _primaryProfileName,
                     selected: _selectedKind == TimetableKind.university,
                     selectedColor: _kUniversityFallback,
                     onTap: () => setState(
@@ -486,7 +492,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                   Expanded(
                     child: Text(
                       _selectedKind == TimetableKind.university
-                          ? 'University'
+                          ? _primaryProfileName
                           : _personalProfileName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -499,17 +505,16 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                               : _kPersonalFallback),
                     ),
                   ),
-                  if (_selectedKind == TimetableKind.personal)
-                    TextButton(
-                      onPressed: _choosePersonalScheduleProfile,
-                      child: const Text('Change profile'),
-                    ),
+                  TextButton(
+                    onPressed: () => _chooseScheduleProfile(_selectedKind),
+                    child: const Text('Edit schedule'),
+                  ),
                 ],
               ),
               const SizedBox(height: 5),
               Text(
                 _selectedKind == TimetableKind.university
-                    ? 'Weekly repeating schedule'
+                    ? _primaryProfileDescription
                     : _personalProfileDescription,
                 style: const TextStyle(
                     fontSize: 13, color: AppColors.textSecondary),
@@ -521,7 +526,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                   child: FilledButton.icon(
                     onPressed: () => _copyUniversityEntries(),
                     icon: const Icon(Icons.content_copy_rounded, size: 16),
-                    label: const Text('Copy university classes here'),
+                    label: Text('Copy $_primaryProfileName here'),
                     style: FilledButton.styleFrom(
                       backgroundColor: _kPersonalFallback,
                       foregroundColor: Colors.white,
@@ -863,7 +868,7 @@ class _WeekdaySection extends StatelessWidget {
                 GestureDetector(
                   onTap: onOpenDay,
                   child: Text(
-                    '${entries.length} ${entries.length == 1 ? 'class' : 'classes'} →',
+                    '${entries.length} ${entries.length == 1 ? 'entry' : 'entries'} →',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -999,7 +1004,7 @@ class _WeekdaySection extends StatelessWidget {
           else
             Padding(
               padding: const EdgeInsets.only(left: 4),
-              child: Text('No classes scheduled',
+              child: Text('No entries scheduled',
                   style: TextStyle(
                       fontSize: 14,
                       color: AppColors.textSecondaryOpacity(0.7))),
@@ -1236,7 +1241,7 @@ class _ClassCard extends StatelessWidget {
                                 child: Text(
                                     entry.scheduleKind == TimetableKind.personal
                                         ? 'Edit activity'
-                                        : 'Edit class')),
+                                        : 'Edit entry')),
                             if (entry.scheduleKind == TimetableKind.personal)
                               PopupMenuItem(
                                   value: 'task',
@@ -1249,7 +1254,7 @@ class _ClassCard extends StatelessWidget {
                                 child: Text(
                                     entry.scheduleKind == TimetableKind.personal
                                         ? 'Delete activity'
-                                        : 'Delete class',
+                                        : 'Delete entry',
                                     style: const TextStyle(
                                         color: AppColors.alert))),
                           ],
@@ -1283,7 +1288,7 @@ class _EmptyDay extends StatelessWidget {
             borderRadius: BorderRadius.circular(24)),
         child: Column(
           children: [
-            Text(isToday ? "You're all clear today" : "Nothing scheduled",
+            Text(isToday ? "No classes or plans today" : "Nothing scheduled today",
                 style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -1293,7 +1298,7 @@ class _EmptyDay extends StatelessWidget {
             Text(
                 isToday
                     ? 'Take a break or schedule something.'
-                    : 'Add a class or personal activity.',
+                    : 'Add an entry to this schedule.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     fontSize: 14, color: AppColors.textSecondaryOpacity(0.8))),

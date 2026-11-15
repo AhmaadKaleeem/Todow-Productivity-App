@@ -10,20 +10,20 @@ import 'package:todow/core/utils/date_format.dart';
 import 'package:todow/domain/models/enums.dart';
 import 'package:todow/domain/models/task.dart';
 import 'package:todow/domain/models/timetable_entry.dart';
-import 'package:todow/presentation/providers/roadmap_providers.dart';
-import 'package:todow/presentation/controllers/task_controller.dart';
-import 'package:todow/presentation/screens/roadmap_list_screen.dart';
-import 'package:todow/presentation/screens/task_editor_screen.dart';
-import 'package:todow/presentation/screens/timetable_screen.dart';
+import 'package:todow/presentation/features/roadmaps/roadmap_providers.dart';
+import 'package:todow/presentation/features/tasks/task_controller.dart';
+import 'package:todow/presentation/features/roadmaps/roadmap_list_screen.dart';
+import 'package:todow/presentation/features/tasks/task_editor_screen.dart';
+import 'package:todow/presentation/features/timetable/timetable_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:todow/presentation/providers/app_providers.dart';
-import 'package:todow/presentation/providers/task_providers.dart';
-import 'package:todow/presentation/providers/timetable_providers.dart';
-import 'package:todow/presentation/widgets/corner_arc_decor.dart';
+import 'package:todow/presentation/app_providers.dart';
+import 'package:todow/presentation/features/tasks/task_providers.dart';
+import 'package:todow/presentation/features/timetable/timetable_providers.dart';
+import 'package:todow/presentation/shared/corner_arc_decor.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:todow/domain/models/query.dart';
 import 'package:todow/domain/date_labels.dart';
-import 'package:todow/presentation/screens/app_shell.dart';
+import 'package:todow/presentation/app_shell.dart';
 
 const _softShadow =
     BoxShadow(color: Color(0x0F000000), blurRadius: 8, offset: Offset(0, 2));
@@ -802,7 +802,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             const SizedBox(height: 16),
                             TextButton(
                               onPressed: tc.clearQuery,
-                              child: const Text('Clear all filters',
+                              child: const Text('Reset search and filters',
                                   style: TextStyle(color: AppColors.action)),
                             ),
                           ],
@@ -1641,13 +1641,13 @@ class _EmptyTasksHint extends StatelessWidget {
               const Icon(Icons.check_circle_outline_rounded,
                   size: 40, color: AppColors.textSecondary),
               const SizedBox(height: 12),
-              const Text('No tasks today',
+              const Text('Nothing on your list for today',
                   style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
                       color: AppColors.textSecondary)),
               const SizedBox(height: 2),
-              const Text('Tap to add your first task',
+              const Text('Add a task',
                   style:
                       TextStyle(fontSize: 12, color: AppColors.textSecondary)),
             ],
