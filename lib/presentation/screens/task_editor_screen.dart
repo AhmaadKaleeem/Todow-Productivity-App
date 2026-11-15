@@ -83,6 +83,7 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
   bool _schedExpanded = false;
   bool _priorityExpanded = false;
   bool _projectExpanded = false;
+  bool _subjectExpanded = false;
   bool _remindersExpanded = false;
   bool _subtasksExpanded = false;
   bool _notesExpanded = false;
@@ -97,10 +98,10 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
     final taskId = _workingTask?.id;
     _isOnPersonalTimetable = taskId != null &&
         (ref.read(timetableProvider).valueOrNull ?? []).any(
-              (entry) =>
-                  entry.taskId == taskId &&
-                  entry.scheduleKind == TimetableKind.personal,
-            );
+          (entry) =>
+              entry.taskId == taskId &&
+              entry.scheduleKind == TimetableKind.personal,
+        );
     _title = TextEditingController(text: _workingTask?.title ?? '');
     _notes = TextEditingController(text: _workingTask?.description ?? '');
     _priority = _workingTask?.priority ?? TaskPriority.none;
@@ -115,7 +116,7 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
     final cat = _workingTask?.category ?? _kRoadmaps.first;
     if (!_roadmaps.contains(cat)) _roadmaps.add(cat);
     _selectedRoadmap = cat;
-    
+
     _subjects = ['None'];
     for (final t in allTasks) {
       if (t.subject != null && !_subjects.contains(t.subject!)) {
@@ -123,6 +124,7 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
       }
     }
     _selectedSubject = _workingTask?.subject;
+    _subjectExpanded = _selectedSubject != null;
     if (_selectedSubject != null && !_subjects.contains(_selectedSubject)) {
       _subjects.add(_selectedSubject!);
     }
@@ -418,17 +420,17 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
         final start =
             DateTime(date.year, date.month, date.day, time.hour, time.minute);
         await ref.read(timetableProvider.notifier).add(
-          courseName: task.title,
-          instructor: task.description,
-          weekday: WeekdayExt.fromDartWeekday(date.weekday),
-          startTime: start,
-          endTime: start.add(const Duration(hours: 1)),
-          scheduleKind: TimetableKind.personal,
-          scheduledDate: date,
-          repeatWeekly: false,
-          category: task.topicId == null ? 'Task' : 'Roadmap',
-          taskId: task.id,
-        );
+              courseName: task.title,
+              instructor: task.description,
+              weekday: WeekdayExt.fromDartWeekday(date.weekday),
+              startTime: start,
+              endTime: start.add(const Duration(hours: 1)),
+              scheduleKind: TimetableKind.personal,
+              scheduledDate: date,
+              repeatWeekly: false,
+              category: task.topicId == null ? 'Task' : 'Roadmap',
+              taskId: task.id,
+            );
       }
       if (mounted) setState(() => _isOnPersonalTimetable = true);
     } catch (e, st) {
@@ -437,8 +439,8 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(const SnackBar(
-          content:
-              Text("We couldn't add this task to your timetable. Please check your schedule and try again."),
+          content: Text(
+              "We couldn't add this task to your timetable. Please check your schedule and try again."),
         ));
     } finally {
       if (mounted) setState(() => _isAddingToPersonalTimetable = false);
@@ -739,9 +741,14 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
                           _reminderPlan.constantReminder,
                       subtaskCount: _subtasks.length,
                       showProject: !_isRoadmapTask,
+                      showSubject: !_isRoadmapTask &&
+                          ['Assignment', 'Quiz', 'Paper']
+                              .contains(_selectedRoadmap),
+                      subject: _selectedSubject,
                       schedExpanded: _schedExpanded,
                       priorityExpanded: _priorityExpanded,
                       projectExpanded: _projectExpanded,
+                      subjectExpanded: _subjectExpanded,
                       remindersExpanded: _remindersExpanded,
                       subtasksExpanded: _subtasksExpanded,
                       onSchedTap: () =>
@@ -750,6 +757,8 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
                           () => _priorityExpanded = !_priorityExpanded),
                       onProjectTap: () =>
                           setState(() => _projectExpanded = !_projectExpanded),
+                      onSubjectTap: () =>
+                          setState(() => _subjectExpanded = !_subjectExpanded),
                       onRemindersTap: () => setState(
                           () => _remindersExpanded = !_remindersExpanded),
                       onSubtasksTap: () => setState(
@@ -802,16 +811,19 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
                       ),
 
                     // ── Subject panel ────────────────────────────────────
-                    if (!_isRoadmapTask && ['Assignment', 'Quiz', 'Paper'].contains(_selectedRoadmap))
+                    if (!_isRoadmapTask &&
+                        ['Assignment', 'Quiz', 'Paper']
+                            .contains(_selectedRoadmap))
                       _AnimatedSection(
-                        visible: _projectExpanded,
+                        visible: _subjectExpanded,
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                           child: _ProjectPanel(
                             roadmaps: _subjects,
                             selected: _selectedSubject ?? 'None',
                             colorFor: _projectColor,
-                            onSelect: (s) => setState(() => _selectedSubject = s == 'None' ? null : s),
+                            onSelect: (s) => setState(() =>
+                                _selectedSubject = s == 'None' ? null : s),
                             onAdd: _addNewSubject,
                           ),
                         ),
@@ -994,10 +1006,12 @@ class _TaskEditorScreenState extends ConsumerState<TaskEditorScreen>
                 child: ElevatedButton(
                   onPressed: (hasTitle && !_isSaving) ? _save : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        (hasTitle && !_isSaving) ? AppColors.action : AppColors.divider,
-                    foregroundColor:
-                        (hasTitle && !_isSaving) ? AppColors.surface : AppColors.textSecondary,
+                    backgroundColor: (hasTitle && !_isSaving)
+                        ? AppColors.action
+                        : AppColors.divider,
+                    foregroundColor: (hasTitle && !_isSaving)
+                        ? AppColors.surface
+                        : AppColors.textSecondary,
                     disabledBackgroundColor: AppColors.divider,
                     minimumSize: const Size(double.infinity, 56),
                     shape: RoundedRectangleBorder(
@@ -1202,14 +1216,18 @@ class _ControlStrip extends StatelessWidget {
     required this.remindersOn,
     required this.subtaskCount,
     required this.showProject,
+    required this.showSubject,
+    required this.subject,
     required this.schedExpanded,
     required this.priorityExpanded,
     required this.projectExpanded,
+    required this.subjectExpanded,
     required this.remindersExpanded,
     required this.subtasksExpanded,
     required this.onSchedTap,
     required this.onPriorityTap,
     required this.onProjectTap,
+    required this.onSubjectTap,
     required this.onRemindersTap,
     required this.onSubtasksTap,
   });
@@ -1220,14 +1238,18 @@ class _ControlStrip extends StatelessWidget {
   final bool remindersOn;
   final int subtaskCount;
   final bool showProject;
+  final bool showSubject;
+  final String? subject;
   final bool schedExpanded,
       priorityExpanded,
       projectExpanded,
+      subjectExpanded,
       remindersExpanded,
       subtasksExpanded;
   final VoidCallback onSchedTap,
       onPriorityTap,
       onProjectTap,
+      onSubjectTap,
       onRemindersTap,
       onSubtasksTap;
 
@@ -1244,6 +1266,7 @@ class _ControlStrip extends StatelessWidget {
           _StripChip(
             label: dueAt != null ? _shortDate(dueAt!) : 'Schedule',
             active: schedExpanded || dueAt != null,
+            expanded: schedExpanded,
             activeColor: AppColors.action,
             onTap: onSchedTap,
           ),
@@ -1253,6 +1276,7 @@ class _ControlStrip extends StatelessWidget {
                 ? 'Priority'
                 : 'Priority - ${meta.label}',
             active: priorityExpanded || priority != TaskPriority.none,
+            expanded: priorityExpanded,
             activeColor: meta.color == const Color(0x00000000)
                 ? AppColors.action
                 : meta.color,
@@ -1262,13 +1286,23 @@ class _ControlStrip extends StatelessWidget {
             _StripChip(
               label: 'Category - $project',
               active: projectExpanded,
+              expanded: projectExpanded,
               activeColor: AppColors.decorNavy,
               onTap: onProjectTap,
+            ),
+          if (showSubject)
+            _StripChip(
+              label: subject == null ? 'Subject' : 'Subject - $subject',
+              active: subjectExpanded || subject != null,
+              expanded: subjectExpanded,
+              activeColor: AppColors.decorPink,
+              onTap: onSubjectTap,
             ),
           // Reminders chip
           _StripChip(
             label: remindersOn ? 'Reminders - On' : 'Reminders',
             active: remindersExpanded || remindersOn,
+            expanded: remindersExpanded,
             activeColor: AppColors.attention,
             onTap: onRemindersTap,
           ),
@@ -1278,6 +1312,7 @@ class _ControlStrip extends StatelessWidget {
                 ? '$subtaskCount subtask${subtaskCount == 1 ? '' : 's'}'
                 : 'Subtasks',
             active: subtasksExpanded || subtaskCount > 0,
+            expanded: subtasksExpanded,
             activeColor: AppColors.decorCoral,
             onTap: onSubtasksTap,
           ),
@@ -1314,52 +1349,68 @@ class _StripChip extends StatelessWidget {
     required this.label,
     required this.active,
     required this.activeColor,
+    required this.expanded,
     required this.onTap,
   });
 
   final String label;
   final bool active;
   final Color activeColor;
+  final bool expanded;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: active
-                ? activeColor.withValues(alpha: 0.10)
-                : AppColors.surface,
-            border: Border.all(
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        expanded: expanded,
+        label: label,
+        child: GestureDetector(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
               color: active
-                  ? activeColor.withValues(alpha: 0.35)
-                  : AppColors.divider,
-              width: active ? 1.5 : 1,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: active
-                ? []
-                : const [
-                    BoxShadow(
-                        color: Color(0x08000000),
-                        blurRadius: 4,
-                        offset: Offset(0, 1)),
-                  ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                  color: active ? activeColor : AppColors.textSecondary,
-                ),
+                  ? activeColor.withValues(alpha: 0.10)
+                  : AppColors.surface,
+              border: Border.all(
+                color: active
+                    ? activeColor.withValues(alpha: 0.35)
+                    : AppColors.divider,
+                width: active ? 1.5 : 1,
               ),
-            ],
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: active
+                  ? []
+                  : const [
+                      BoxShadow(
+                          color: Color(0x08000000),
+                          blurRadius: 4,
+                          offset: Offset(0, 1)),
+                    ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                    color: active ? activeColor : AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  expanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  size: 16,
+                  color: (active ? activeColor : AppColors.textSecondary)
+                      .withValues(alpha: 0.75),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -1442,7 +1493,8 @@ class _SchedulingPanel extends StatelessWidget {
                     _QuickDateChip(
                       label: 'Pick date & time',
                       icon: Icons.calendar_month_rounded,
-                      selected: dueAt != null && !isQuickDate(0) && !isQuickDate(1),
+                      selected:
+                          dueAt != null && !isQuickDate(0) && !isQuickDate(1),
                       onTap: onPickDate,
                     ),
                   ],
@@ -1453,7 +1505,8 @@ class _SchedulingPanel extends StatelessWidget {
                 GestureDetector(
                   onTap: onClear,
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 8), // align with first row of chips
+                    padding: const EdgeInsets.only(
+                        top: 8), // align with first row of chips
                     child: Icon(Icons.close_rounded,
                         size: 18,
                         color: AppColors.textSecondary.withValues(alpha: 0.5)),

@@ -228,26 +228,9 @@ class RemindersSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasDailyReminder = plan.dailyReminderMinutes != null;
-    final hasAdvancedOptions = hasDailyReminder ||
-        plan.constantReminder ||
-        plan.flexibleReminder ||
-        plan.quietHoursStartMinutes != null ||
-        plan.ringAsAlarm;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'REMINDERS',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.4,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 12),
-
         // ── Main card ─────────────────────────────────────────────────────────
         Container(
           clipBehavior: Clip.antiAlias,
@@ -267,7 +250,7 @@ class RemindersSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Quick Presets',
+                      'REMINDER TIMING',
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -329,7 +312,7 @@ class RemindersSection extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Active Reminders',
+                    const Text('SCHEDULED TIMES',
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -340,7 +323,7 @@ class RemindersSection extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
-                          'No reminders set. Add some below.',
+                          'No reminders yet. Choose a time below.',
                           style: TextStyle(
                               fontSize: 13,
                               color: AppColors.textSecondary
@@ -378,7 +361,7 @@ class RemindersSection extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Add More',
+                    const Text('ADD ANOTHER TIME',
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -397,7 +380,7 @@ class RemindersSection extends StatelessWidget {
                               onTap: () => _toggleOffset(o));
                         }),
                         _QuickChip(
-                          label: 'Custom...',
+                          label: 'Choose time',
                           selected: false,
                           isSpecial: true,
                           onTap: () => _addCustom(context),
@@ -408,30 +391,6 @@ class RemindersSection extends StatelessWidget {
                 ),
               ),
 
-              ExpansionTile(
-                initiallyExpanded: hasAdvancedOptions,
-                tilePadding: const EdgeInsets.symmetric(horizontal: 20),
-                childrenPadding: EdgeInsets.zero,
-                iconColor: AppColors.textSecondary,
-                collapsedIconColor: AppColors.textSecondary,
-                title: const Text(
-                  'More reminder options',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                subtitle: const Text(
-                  'Daily, repeat, flexible timing, quiet hours and alarm sound',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                children: [
-                  Column(
-                    children: [
               _Divider(),
 
               // ── Daily Reminder ───────────────────────────────────────────────
@@ -446,13 +405,14 @@ class RemindersSection extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Daily Reminder',
+                              Text('Daily repeat',
                                   style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.textPrimary)),
                               SizedBox(height: 2),
-                              Text('Fires every day at a fixed time',
+                              Text(
+                                  'Send this reminder at the same time each day',
                                   style: TextStyle(
                                       fontSize: 12,
                                       color: AppColors.textSecondary)),
@@ -528,13 +488,13 @@ class RemindersSection extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Constant Reminder',
+                              Text('Repeat until done',
                                   style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.textPrimary)),
                               SizedBox(height: 2),
-                              Text('Keeps pinging until you complete the task',
+                              Text('Keep reminding me until I finish this task',
                                   style: TextStyle(
                                       fontSize: 12,
                                       color: AppColors.textSecondary)),
@@ -585,14 +545,14 @@ class RemindersSection extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Flexible Reminder',
+                          const Text('Wait until class ends',
                               style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.textPrimary)),
                           const SizedBox(height: 2),
                           Text(
-                            'Delays notifications until your current class finishes so you aren\'t disturbed',
+                            'Send this reminder after your current class.',
                             style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textSecondary
@@ -706,7 +666,7 @@ class RemindersSection extends StatelessWidget {
                                       color: AppColors.textPrimary)),
                               const SizedBox(height: 2),
                               Text(
-                                'When on, this reminder uses the clock-style alarm. When off, it is a normal notification.',
+                                'Use a clock-style alarm instead of a notification.',
                                 style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textSecondary
@@ -812,10 +772,6 @@ class RemindersSection extends StatelessWidget {
                     ],
                   ],
                 ),
-              ),
-                    ],
-                  ),
-                ],
               ),
             ],
           ),
