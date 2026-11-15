@@ -1,6 +1,6 @@
 # Todow
 
-Todow is a local-first task planner for students. Create tasks, set deadlines and reminders, and keep university classes and personal plans in one app.
+Todow is a local-first planner for study, work, and personal tasks. Create tasks, set deadlines and reminders, and manage schedules in one app. University timetables are supported today; the task planner can also be used for work and personal projects.
 
 <p align="center">
   <img src="screenshots/dashboard.png" width="320" alt="Todow dashboard screen" />
@@ -30,6 +30,7 @@ Todow is a local-first task planner for students. Create tasks, set deadlines an
 - **Sync & Backup** Sync across devices, automatic backups, and offline changes supported.
 - **Focus Improvements** Android app blocking, allowed apps during study, and focus history.
 - **Advanced Planning** Recurring tasks, weekly/monthly planning, goal tracking, milestone dependencies, and flexible reminder rules.
+- **Profession and work categories** Choose a built-in category or enter a custom profession or work type. A future shared cloud catalog can make new categories available for other users to select.
 
 Tasks, reminders, and schedules are stored on your device. Todow's core features work offline.
 
