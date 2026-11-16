@@ -156,7 +156,6 @@ class _TopicCardState extends State<TopicCard> {
 }
 
 // ─────────────────────────────── ACTIVE NODE ────────────────────────────────
-// Largest, most dominant. Full gradient from roadmap accent, task list.
 
 class _ActiveNode extends StatelessWidget {
   const _ActiveNode({
@@ -188,24 +187,12 @@ class _ActiveNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accentDark = _darken(accent, 0.22);
     return Container(
       constraints: const BoxConstraints(minHeight: 220),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [accent, accentDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
-        boxShadow: [
-          BoxShadow(
-            color: accent.withValues(alpha: 0.35),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.divider),
       ),
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -222,8 +209,8 @@ class _ActiveNode extends StatelessWidget {
                     children: [
                       _NodeBadge(
                         label: 'CURRENT · ${_ordinal(topic.orderIndex)}',
-                        color: Colors.white.withValues(alpha: 0.25),
-                        textColor: Colors.white,
+                        color: accent.withValues(alpha: 0.12),
+                        textColor: _darken(accent, 0.28),
                       ),
                       const SizedBox(height: 10),
                       Text(
@@ -232,7 +219,7 @@ class _ActiveNode extends StatelessWidget {
                           fontSize: 22,
                           height: 1.15,
                           fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           letterSpacing: -0.6,
                         ),
                       ),
@@ -245,7 +232,7 @@ class _ActiveNode extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 14,
                             height: 1.45,
-                            color: Colors.white.withValues(alpha: 0.75),
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],
@@ -258,10 +245,14 @@ class _ActiveNode extends StatelessWidget {
                     _StatusButton(
                       tooltip: 'Mark ${topic.title} completed',
                       icon: Icons.check_circle_outline_rounded,
-                      color: Colors.white.withValues(alpha: 0.75),
+                      color: AppColors.action,
                       onTap: () => onStatusChanged(TopicStatus.completed),
                     ),
-                    _TopicMenu(onEdit: onEdit, onDelete: onDelete),
+                    _TopicMenu(
+                      onEdit: onEdit,
+                      onDelete: onDelete,
+                      onDark: false,
+                    ),
                   ],
                 ),
               ],
@@ -272,12 +263,13 @@ class _ActiveNode extends StatelessWidget {
               progress: progress,
               completed: completed,
               total: tasks.length,
-              onDark: true,
+              onDark: false,
+              accent: AppColors.action,
             ),
             // Task list (expandable)
             if (tasks.isNotEmpty) ...[
               const SizedBox(height: 4),
-              Divider(height: 32, color: Colors.white.withValues(alpha: 0.20)),
+              const Divider(height: 32, color: AppColors.divider),
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: onExpand,
@@ -289,7 +281,7 @@ class _ActiveNode extends StatelessWidget {
                         expanded
                             ? Icons.expand_less_rounded
                             : Icons.expand_more_rounded,
-                        color: Colors.white.withValues(alpha: 0.75),
+                        color: AppColors.textSecondary,
                         size: 20,
                       ),
                       const SizedBox(width: 6),
@@ -298,7 +290,7 @@ class _ActiveNode extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white.withValues(alpha: 0.85),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ],
@@ -317,7 +309,7 @@ class _ActiveNode extends StatelessWidget {
                       _TopicTaskRow(
                         task: task,
                         onChanged: onTasksChanged,
-                        onDark: true,
+                        onDark: false,
                       ),
                   ],
                 ),
@@ -339,21 +331,20 @@ class _ActiveNode extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
+                  color: AppColors.action.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.add_rounded,
-                        size: 17, color: Colors.white.withValues(alpha: 0.90)),
+                    Icon(Icons.add_rounded, size: 17, color: AppColors.action),
                     const SizedBox(width: 6),
                     Text(
                       'Add task',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white.withValues(alpha: 0.90),
+                        color: AppColors.action,
                       ),
                     ),
                   ],
@@ -699,7 +690,7 @@ class _StatusButton extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.18),
+            color: color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, size: 22, color: color),

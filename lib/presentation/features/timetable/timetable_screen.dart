@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:todow/core/theme/app_colors.dart';
+import 'package:todow/presentation/shared/beautiful_back_button.dart';
 import 'package:todow/core/utils/date_format.dart';
 import 'package:todow/domain/models/enums.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +11,6 @@ import 'package:todow/presentation/features/timetable/timetable_providers.dart';
 import 'package:todow/presentation/features/tasks/task_providers.dart';
 
 import 'package:todow/presentation/features/timetable/timetable_import_screen.dart';
-import 'package:todow/presentation/app_shell.dart';
 import 'package:todow/presentation/features/timetable/timetable_editor.dart';
 import 'package:todow/presentation/features/timetable/timetable_semantics.dart';
 
@@ -413,24 +413,8 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        leadingWidth: 112,
-        leading: TextButton.icon(
-          onPressed: () {
-            final navigator = Navigator.of(context);
-            if (navigator.canPop()) {
-              navigator.pop();
-            } else {
-              AppShellScope.of(context).selectPage(0);
-            }
-          },
-          icon: const Icon(Icons.arrow_back_rounded, size: 18),
-          label: const Text('Back'),
-          style: TextButton.styleFrom(
-            minimumSize: const Size(104, 48),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            alignment: Alignment.centerLeft,
-          ),
-        ),
+        leadingWidth: 104,
+        leading: const Center(child: BeautifulBackButton()),
         title: const Text('Timetable'),
         actions: [
           IconButton(

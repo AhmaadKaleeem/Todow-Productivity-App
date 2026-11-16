@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:todow/core/theme/app_colors.dart';
+import 'package:todow/presentation/shared/beautiful_back_button.dart';
 import 'package:todow/core/utils/date_format.dart';
 import 'package:todow/data/timetable_import_parser.dart';
 import 'package:todow/domain/models/enums.dart';
@@ -182,6 +183,8 @@ class _TimetableImportScreenState extends ConsumerState<TimetableImportScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        leadingWidth: 104,
+        leading: const Center(child: BeautifulBackButton()),
         title: Text('Import ${widget.scheduleName} schedule'),
         backgroundColor: AppColors.background,
       ),

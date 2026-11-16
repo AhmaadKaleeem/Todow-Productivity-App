@@ -14,6 +14,7 @@ import 'package:todow/presentation/features/roadmaps/roadmap_import_screen.dart'
 import 'package:todow/presentation/features/roadmaps/roadmap_spine_painter.dart';
 import 'package:todow/presentation/features/roadmaps/topic_card.dart';
 import 'package:todow/presentation/features/tasks/task_time_view.dart';
+import 'package:todow/presentation/shared/beautiful_back_button.dart';
 
 // Inline palette resolver — kept in sync with roadmap_list_screen palette.
 const _kDetailPalette = [
@@ -215,7 +216,6 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    final accent = _roadmapAccent(_roadmap);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: _loading
@@ -225,95 +225,78 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen>
               slivers: [
                 // ── Gradient header band ─────────────────────────────────
                 SliverToBoxAdapter(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [accent, accent.withValues(alpha: 0.75)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(28)),
-                    ),
-                    child: SafeArea(
-                      bottom: false,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Toolbar row
-                            Row(
-                              children: [
-                                _ToolbarButton(
-                                  icon: Icons.arrow_back_rounded,
-                                  label: 'Back',
-                                  onTap: () => Navigator.pop(context),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    physics: const BouncingScrollPhysics(),
-                                    reverse: true,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        _ToolbarButton(
-                                          icon: Icons.upload_file_rounded,
-                                          label: 'Import',
-                                          onTap: () =>
-                                              Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const RoadmapImportScreen()),
-                                          ),
+                  child: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Toolbar row
+                          Row(
+                            children: [
+                              const BeautifulBackButton(),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const BouncingScrollPhysics(),
+                                  reverse: true,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _ToolbarButton(
+                                        icon: Icons.upload_file_rounded,
+                                        label: 'Import',
+                                        onTap: () => Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const RoadmapImportScreen()),
                                         ),
-                                        const SizedBox(width: 8),
-                                        _ToolbarMenu(
-                                          onEdit: _editRoadmap,
-                                          onExportCsv: () =>
-                                              _exportRoadmap(false),
-                                          onExportExcel: () =>
-                                              _exportRoadmap(true),
-                                          onDelete: _confirmDeleteRoadmap,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        _ToolbarButton(
-                                          icon: Icons.add_rounded,
-                                          label: 'Topic',
-                                          isPrimary: true,
-                                          accent: accent,
-                                          onTap: _showCreateTopicDialog,
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _ToolbarMenu(
+                                        onEdit: _editRoadmap,
+                                        onExportCsv: () =>
+                                            _exportRoadmap(false),
+                                        onExportExcel: () =>
+                                            _exportRoadmap(true),
+                                        onDelete: _confirmDeleteRoadmap,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _ToolbarButton(
+                                        icon: Icons.add_rounded,
+                                        label: 'Topic',
+                                        isPrimary: true,
+                                        accent: AppColors.action,
+                                        onTap: _showCreateTopicDialog,
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            // Roadmap title
-                            Text(
-                              _roadmap.title,
-                              style: const TextStyle(
-                                  fontSize: 26,
-                                  height: 1.05,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                  letterSpacing: -0.8),
-                            ),
-                            if (_roadmap.description?.isNotEmpty ?? false) ...[
-                              const SizedBox(height: 6),
-                              Text(_roadmap.description!,
-                                  style: TextStyle(
-                                      fontSize: 14,
-                                      height: 1.45,
-                                      color:
-                                          Colors.white.withValues(alpha: 0.8))),
+                              ),
                             ],
+                          ),
+                          const SizedBox(height: 20),
+                          // Roadmap title
+                          Text(
+                            _roadmap.title,
+                            style: const TextStyle(
+                                fontSize: 26,
+                                height: 1.05,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.8),
+                          ),
+                          if (_roadmap.description?.isNotEmpty ?? false) ...[
+                            const SizedBox(height: 6),
+                            Text(_roadmap.description!,
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    height: 1.45,
+                                    color: AppColors.textSecondary)),
                           ],
-                        ),
+                        ],
                       ),
                     ),
                   ),
@@ -323,7 +306,9 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen>
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                     child: _RoadmapProgress(
-                        topics: _topics, tasks: _tasks, accent: accent),
+                        topics: _topics,
+                        tasks: _tasks,
+                        accent: AppColors.action),
                   ),
                 ),
                 SliverToBoxAdapter(
@@ -331,7 +316,7 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen>
                     padding: const EdgeInsets.fromLTRB(24, 0, 24, 18),
                     child: _RoadmapModeSwitch(
                       dateView: _dateView,
-                      accent: accent,
+                      accent: AppColors.action,
                       onChanged: (dateView) =>
                           setState(() => _dateView = dateView),
                     ),
@@ -844,10 +829,8 @@ class _ToolbarButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor =
-        isPrimary ? Colors.white : Colors.white.withValues(alpha: 0.15);
-    final fgColor =
-        isPrimary ? (accent ?? AppColors.textPrimary) : Colors.white;
+    final bgColor = isPrimary ? AppColors.action : AppColors.surface;
+    final fgColor = isPrimary ? Colors.white : AppColors.textPrimary;
 
     return Material(
       color: Colors.transparent,
@@ -856,9 +839,7 @@ class _ToolbarButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(18),
-          border: isPrimary
-              ? null
-              : Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          border: isPrimary ? null : Border.all(color: AppColors.divider),
         ),
         child: InkWell(
           onTap: onTap,

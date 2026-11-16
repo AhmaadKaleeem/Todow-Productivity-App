@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:todow/core/theme/app_colors.dart';
+import 'package:todow/presentation/shared/beautiful_back_button.dart';
 import 'package:todow/domain/models/roadmap_import.dart';
 import 'package:todow/presentation/features/roadmaps/roadmap_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -197,6 +198,8 @@ class _RoadmapImportScreenState extends ConsumerState<RoadmapImportScreen> {
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
+          leadingWidth: 104,
+          leading: const Center(child: BeautifulBackButton()),
           backgroundColor: AppColors.background,
           surfaceTintColor: Colors.transparent,
           title: const Text('Import Roadmap',
