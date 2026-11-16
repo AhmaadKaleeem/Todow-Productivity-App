@@ -13,7 +13,7 @@ Todow helps people organize tasks around deadlines, weekly schedules, and focuse
 
 ### Tasks
 
-Users can create, edit, complete, reopen, archive, duplicate, and delete tasks. Tasks support descriptions, dates, priorities, categories, tags, subtasks, attachments, and reminders. The task list supports search, filters, sorting, manual ordering, and task insertion.
+Users can create, edit, complete, reopen, archive, duplicate, and delete tasks. Tasks support descriptions, dates, priorities, categories, subtasks, attachments, and reminders. The task list supports search, filters, sorting, manual ordering, and task insertion.
 
 ### Reminders and alarms
 
