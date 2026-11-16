@@ -1,0 +1,13 @@
+id: adopted
+pattern: none
+layers:
+  - id: feature
+    scope: ["lib/presentation/features/tasks/**", "test/**", "pubspec.yaml", "pubspec.lock", "android/app/src/main/AndroidManifest.xml", "ios/Runner/Info.plist"]
+    verify: "flutter test"
+    commit: "feat(tasks): add voice dictation"
+  - id: join
+    depends_on: feature
+    scope: ["**"]
+    verify: "flutter test && flutter analyze"
+    exclusive: true
+    commit: "docs(tasks): document voice dictation"

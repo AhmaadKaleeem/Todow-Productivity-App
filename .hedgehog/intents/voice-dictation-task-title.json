@@ -1,0 +1,24 @@
+{
+  "id": "voice-dictation-task-title",
+  "goal": "Add speech-to-text dictation to task entry.",
+  "outcome": "In the existing task editor, users can dictate into the editable task title, review and edit the transcript, and save only with the existing Save action. Request microphone and speech-recognition permissions as needed. Use on-device recognition; report unavailable recognition or denied permission with a clear recovery path. Do not parse dates, reminders, priorities, multiple tasks, call an AI service, or save an unconfirmed transcript in this slice.",
+  "priority": 100,
+  "requirements": [
+    {
+      "id": "VOICE-DICTATION-TASK-TITLE-RULE-1",
+      "kind": "rule",
+      "statement": "Voice dictation only populates the task title; structured speech parsing is separate future work."
+    },
+    {
+      "id": "VOICE-DICTATION-TASK-TITLE-CONSTRAINT-1",
+      "kind": "constraint",
+      "statement": "All task data remains local. Recognition must request on-device mode and must not fall back to a server."
+    },
+    {
+      "id": "VOICE-DICTATION-TASK-TITLE-ACCEPTANCE-1",
+      "kind": "acceptance",
+      "statement": "Android and iOS request the required microphone and speech-recognition permissions. Denial or unavailable on-device recognition leaves the task editable and unsaved."
+    }
+  ],
+  "depends_on": []
+}

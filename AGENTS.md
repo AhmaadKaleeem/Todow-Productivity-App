@@ -49,8 +49,7 @@ The file is the role — don't summarize it.
 
 If your harness has no subagent mechanism, read the agent's file and
 follow it yourself in this thread, then clear the conversation at the
-next unit boundary (a module's Phase A, a landing page section) and
-recover with `hedgehog status`.
+next unit boundary and recover with `hedgehog status`.
 
 Either way, honor the "May" column below. Where a harness can't enforce a
 tool grant, the constraint is yours to keep — and `hedgehog verify` still
@@ -61,6 +60,7 @@ gates the commit on ALLOWED SCOPE.
 | Agent | Use when | May | File |
 | --- | --- | --- | --- |
 | `bootstrap` | Use once per invocation, at the start of a new Hedgehog project, to land the workspace for whichever core `planner` selected at Phase 0 — the first real workspace this project gets, since `init` with no explicit core flag lands the shared agents/skills/build-graph payload and leaves the workspace to bootstrap. | Read, write, and edit files, and run shell commands. | `bootstrap.md` |
+| `layer-eng` | Use for every build task on an adopted core (`.hedgehog/core.yaml` present, written by `hedgehog-adopt`) — one layer per claimed packet, gated by `hedgehog verify`. | Read, write, and edit files, and run shell commands. | `layer-eng.md` |
 | `planner` | Use for planning intake (core selection, then scope boundary + domain vocabulary or Chain Method brief, depending on core) at the start of a project, and for re-entry when new scope enters play on a project already built or mid-build — including after a build has reached its Stop Condition, where it is the exit `tweaker` routes new scope to. | Read, write, and edit files, and run shell commands. | `planner.md` |
 | `reviewer` | Use at a phase or layer transition the core's own loop skill defines, or when the Correction Protocol is invoked. | Read files and run shell commands. Do not write or edit any file — report findings as text. | `reviewer.md` |
 | `tweaker` | Use when a change request lands on a project that already has a build graph and nothing in flight (`hedgehog status --brief` names no task) — a finished build being adjusted, or an adopted repo's next piece of work — and the user is offered a fresh-context session to iterate. | Read, write, and edit files, and run shell commands. | `tweaker.md` |
@@ -74,11 +74,14 @@ situation applies.
 | --- | --- | --- |
 | `code-comment-discipline` | Apply whenever writing or editing source code in any core's build agent (backend-eng, ui-builder, or equivalent). | `code-comment-discipline/SKILL.md` |
 | `conventional-commits` | Use when uncommitted changes need to be split into atomic, conventional commits ordered for review. | `conventional-commits/SKILL.md` |
-| `filing-issues` | Use when filing one or more GitHub issues for planned work — "file an issue for this", "turn this plan into issues", "open a tracking issue". | `filing-issues/SKILL.md` |
+| `filing-issues` | Use only when filing a GitHub issue about Hedgehog itself — a defect or gap in the discipline, the CLI, a core, or a host adapter — such as "file an issue for this", "turn this plan into issues", "open a tracking issue" when the issue is about Hedgehog. | `filing-issues/SKILL.md` |
+| `hedgehog-adopt` | Use once, at the start of bringing Hedgehog's discipline to an existing repo whose code Hedgehog didn't build — "adopt this repo", "add Hedgehog here", "I want scope/verify enforcement on my changes to this existing codebase". | `hedgehog-adopt/SKILL.md` |
+| `hedgehog-adopt-elicit` | Use when `hedgehog-adopt` is about to add an intent for a large or under-specified unit of change on an already-adopted repo — "add billing," "support multi-tenancy," anything whose scope isn't already obvious from how the user asked for it. | `hedgehog-adopt-elicit/SKILL.md` |
+| `hedgehog-authored-loop` | Use for every unit of change-work on an adopted core (`.hedgehog/core.yaml` present, written by `hedgehog-adopt`) — building one layer per claimed packet, gated by `hedgehog verify` and committed one layer at a time. | `hedgehog-authored-loop/SKILL.md` |
 | `hedgehog-contributing` | Use when the user wants to contribute a fix or roadmap item back to the Hedgehog project itself (skyf0xx/hedgehog) rather than their own project. | `hedgehog-contributing/SKILL.md` |
 | `hedgehog-daily` | Use when a change request lands on a project that already has `.hedgehog/` and no build in flight — a finished build being adjusted, or an adopted repo's next piece of work. | `hedgehog-daily/SKILL.md` |
 | `hedgehog-orchestrating` | Use at the start of any session on a project with a build graph (`.hedgehog/hedgehog.db`), and again at every claim/dispatch/verify cycle within it. | `hedgehog-orchestrating/SKILL.md` |
-| `hedgehog-planning-intake` | Use on any core for first-run planning intake — Phase 0 runs the vendored BMAD-METHOD planning shelf, shared by every core, and Phase 1 (mining `04-prd.md` into intent records plus the Add-ons/sync-and-remote-entities decision) is full-stack-app's and pwa-app's shared procedure — identical mechanics, a different decision at step 5/8. | `hedgehog-planning-intake/SKILL.md` |
+| `hedgehog-planning-intake` | Use when `planner` runs first-run planning intake on a core whose intake opens with the vendored BMAD-METHOD shelf, or chooses compressed intake after a user asks not to be asked questions, or adds new scope to a full-stack-app, pwa-app, or authored project that already has intents (the Re-entry pass). | `hedgehog-planning-intake/SKILL.md` |
 | `no-history-in-output` | Apply whenever writing or updating a project-facing document — root CLAUDE.md, `.hedgehog/core-design.md`, specs, READMEs, or similar. | `no-history-in-output/SKILL.md` |
 | `pr-writing` | Use whenever writing a PR title/description, a commit message body, a code review comment, or an issue — in Hedgehog's own repo or any consuming project. | `pr-writing/SKILL.md` |
 
