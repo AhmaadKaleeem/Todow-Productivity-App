@@ -107,7 +107,7 @@ class _BgActionRunner {
     debugPrint('[BG] Task $taskId marked completed.');
   }
 
-  // Snooze the active reminder by 15 minutes and post a replacement
+  // Snooze the active reminder by 10 minutes and post a replacement
   // notification so the user sees confirmation without opening the app.
   static Future<void> _snoozeTask(sqf.Database db, String taskId) async {
     // Read the active reminder for this task.
@@ -124,7 +124,7 @@ class _BgActionRunner {
       return;
     }
 
-    final snoozedUntil = DateTime.now().add(const Duration(minutes: 15));
+    final snoozedUntil = DateTime.now().add(const Duration(minutes: 10));
     final reminderId = rows.first['id'] as String;
     final notifId = (rows.first['notification_id'] as int?) ??
         reminderId.hashCode.abs() % 2147483647;
