@@ -1,4 +1,4 @@
-# Todow
+# Todow - Productivity App
 
 Keep tasks, class schedules, and focus sessions together. Plan around your week and choose when reminders arrive. Your data stays on your device, and core features work offline.
 
